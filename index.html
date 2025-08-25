@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Music Player</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <h1 class="app-title">Universal Music Player</h1>
+            <div id="piece-info" class="piece-info"></div>
+        </header>
+
+        <nav class="tab-nav" id="tab-nav">
+            <!-- Tabs will be generated dynamically -->
+        </nav>
+
+        <main class="app-main">
+            <div class="content-layout">
+                <!-- Left Panel: Videos -->
+                <section class="video-panel">
+                    <div class="video-controls">
+                        <h3>Videos</h3>
+                        <div class="video-selectors">
+                            <div class="video-selector">
+                                <label for="top-video">Top:</label>
+                                <select id="top-video" class="video-select">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                            <div class="video-selector">
+                                <label for="bottom-video">Bottom:</label>
+                                <select id="bottom-video" class="video-select">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="video-players">
+                        <div class="video-container" id="top-video-container">
+                            <video id="top-video-player" controls></video>
+                        </div>
+                        <div class="video-container" id="bottom-video-container">
+                            <video id="bottom-video-player" controls></video>
+                        </div>
+                    </div>
+
+                    <div class="playback-controls">
+                        <button id="play-pause-btn" class="play-pause-btn">▶️ Play</button>
+                    </div>
+
+                    <!-- Score Section -->
+                    <section class="score-section">
+                        <h3>Score</h3>
+                        <div class="score-container" id="score-container">
+                            <img id="score-image" class="score-image" alt="Musical score" />
+                        </div>
+                    </section>
+                </section>
+
+                <!-- Right Panel: Audio -->
+                <section class="audio-panel">
+                    <div class="audio-controls">
+                        <h3>Audio</h3>
+                        <div class="audio-group-selector">
+                            <label for="audio-group">Group:</label>
+                            <select id="audio-group" class="audio-group-select">
+                            </select>
+                        </div>
+                        
+                        <div class="routing-controls">
+                            <div class="channel-routing">
+                                <div class="channel-selector">
+                                    <label for="left-channel">Left:</label>
+                                    <select id="left-channel" class="channel-select">
+                                    </select>
+                                </div>
+                                <div class="channel-selector">
+                                    <label for="right-channel">Right:</label>
+                                    <select id="right-channel" class="channel-select">
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="audio-tracks" id="audio-tracks">
+                        <!-- Audio tracks and visualizations will be generated dynamically -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading...</p>
+        </div>
+    </div>
+
+    <div id="error" class="error-overlay" style="display: none;">
+        <div class="error-content">
+            <h2>Error</h2>
+            <p id="error-message"></p>
+            <button id="error-retry" class="retry-btn">Retry</button>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
