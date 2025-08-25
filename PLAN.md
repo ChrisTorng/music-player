@@ -1,7 +1,8 @@
-# PLAN — 分頁多影片與多軌音訊播放器（純 TypeScript）
+# PLAN — 通用音樂播放器（純 TypeScript）
 
 ## 目標與範圍
-- 以「頁籤」切換不同素材組；每組包含 1–3 部影片與多軌音訊，組內皆已同步。
+- 支援多首樂曲，透過 URL 參數 `?piece=<folder-name>` 決定載入哪個資料夾的 config.json
+- 以「頁籤」切換同一樂曲內不同素材組；每組包含 1–3 部影片與多軌音訊，組內皆已同步。
 - 左側：上下兩個影片播放器，影片播放規則：
   - 上下影片必須不同，或僅播放上影片，或兩個都不播放
   - 不播放的影片無法選擇其音軌作為音源（只能選擇音訊檔）
@@ -18,7 +19,13 @@
 - 波形、頻譜、樂譜皆為預先產生之 PNG；播放前預載完成後再開始互動。
 - 響應式版面：桌機/橫向為左右分欄；手機直向自動改為上下堆疊。
 
-## JSON 設定（可動態增減頁籤/音訊組別/樂譜/內容）
+## 架構設計
+- 每首樂曲有獨立資料夾（如 `Liszt-Liebesträume-No.3/`）
+- 每個資料夾包含 `config.json` 與所有媒體檔案
+- config.json 內所有路徑均為相對於該資料夾的路徑
+- URL `?piece=Liszt-Liebesträume-No.3` 載入對應資料夾的設定
+
+## JSON 設定範例（相對路徑）
 ```json
 {
   "tabs": [
@@ -26,7 +33,7 @@
       "id": "home",
       "title": "Home",
       "videos": [
-        { "id": "v1", "type": "mp4", "url": "https://example.com/home.mp4", "label": "Cam A" },
+        { "id": "v1", "type": "mp4", "url": "home/video/home.mp4", "label": "Cam A" },
         { "id": "v2", "type": "youtube", "url": "https://youtu.be/XXXX", "label": "YouTube" }
       ],
       "audioGroups": [
@@ -36,37 +43,21 @@
           "tracks": [
             {
               "id": "a1",
-              "url": "https://example.com/piano.mp3",
+              "url": "home/audio/piano.mp3",
               "label": "Piano",
               "images": {
-                "waveform": "media/home/audio/piano_wave.png",
-                "spectrogram": "media/home/audio/piano_spec.png",
+                "waveform": "home/audio/piano.waveform.png",
+                "spectrogram": "home/audio/piano.spectrogram.png",
                 "pxPerSecond": 100
               }
             },
             {
               "id": "a2",
-              "url": "https://example.com/instrumental.mp3",
+              "url": "home/audio/instrumental.mp3",
               "label": "Instrumental",
               "images": {
-                "waveform": "media/home/audio/inst_wave.png",
-                "spectrogram": "media/home/audio/inst_spec.png",
-                "pxPerSecond": 100
-              }
-            }
-          ]
-        },
-        {
-          "id": "g2",
-          "label": "Home (Group B)",
-          "tracks": [
-            {
-              "id": "a3",
-              "url": "https://example.com/mix1.mp3",
-              "label": "Mix 1",
-              "images": {
-                "waveform": "media/home/audio/mix1_wave.png",
-                "spectrogram": "media/home/audio/mix1_spec.png",
+                "waveform": "home/audio/inst.waveform.png",
+                "spectrogram": "home/audio/inst.spectrogram.png",
                 "pxPerSecond": 100
               }
             }
@@ -74,7 +65,7 @@
         }
       ],
       "score": {
-        "basePath": "media/score",
+        "basePath": "score",
         "entries": [
           { "file": "1-1.png", "time": 0.0 },
           { "file": "1-2.png", "time": 8.2 },
@@ -94,7 +85,8 @@
       },
       "preload": { "images": true }
     }
-  ]
+  ],
+  "defaultTab": "home"
 }
 ```
 - `type`: `mp4` 或 `youtube`。
@@ -102,14 +94,15 @@
 - `tracks[].images.waveform/spectrogram`: 對應音軌的預渲染 PNG 路徑；可只提供其一。
 - `tracks[].images.pxPerSecond`: 圖像時間對映比例；若缺省，則以音軌 duration 與實際渲染寬度推算。
 - `defaults.routing.left/right`: 左右聲道來源；`{"type":"audio","id":"aX"}` 或 `{"type":"video","position":"top|bottom"}`（僅限正在播放的影片）。
-- `score.entries`: 依時間排序的「樂譜行」切換點；`file` 建議遵循 `media/score/<page>-<system>.png` 命名。
+- `score.entries`: 依時間排序的「樂譜行」切換點；`file` 建議遵循 `score/<page>-<system>.png` 命名。
 - `score.animation`: 切換動畫；`slideUp` 表示由下往上位移置換的效果。
 - `score.preload.ahead`: 預先載入未來 N 行以避免切換頓挫。
 
 ## 介面與檔案結構
 - `public/index.html`: 頁籤列（依 JSON 產生）、左側上下播放器、右側音軌清單＋波形/頻譜 `<img>` 容器、全域播放控制。
 - `src/`
-  - `main.ts`: 載入 JSON、產生 UI、繫結事件、狀態管理。
+  - `main.ts`: URL 參數解析、載入對應樂曲 config.json、產生 UI、繫結事件、狀態管理。
+  - `config/loader.ts`: 動態載入指定樂曲資料夾的 config.json，處理相對路徑解析。
   - `config/types.ts`: 設定檔型別（`Tab`, `VideoSource`, `AudioTrack`, `Defaults`）。
   - `video/native.ts`: 控制 `<video>`（MP4），支援 `load(url) | play() | pause() | seek(t)`。
   - `video/youtube.ts`: IFrame Player 包裝；只作畫面與時間同步（音訊獨立）。
@@ -158,7 +151,7 @@
 - 響應式 PNG：支援多解析度適配，手機使用較低解析度版本。
 
 ## 里程碑（驗收）
-1) 基礎架構與 JSON 載入（頁籤動態生成）。
+1) 基礎架構：URL 參數解析、動態載入樂曲資料夾的 config.json、頁籤動態生成。
 2) 單組：MP4 播放＋播放控制（上/下其中一個）。
 3) 音訊載入＋波形繪製＋游標同步（以音訊為主時鐘）。
 4) 新增「音訊組別」切換與動態軌清單（4–6 軌）。

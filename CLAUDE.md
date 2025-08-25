@@ -4,29 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a classical music media project focused on Liszt's Liebesträume No.3. It contains:
-- Multiple audio/video takes recorded in different locations (home, church)
-- MIDI files and modified versions
-- Score sheet images organized by page and system
-- Audio processing tools for generating waveforms and spectrograms
+This is a universal music player application supporting multiple classical music pieces. Each piece is organized in its own folder with a config.json file containing all media references and timing information.
 
-The planned TypeScript application (described in PLAN.md) will create a multi-track audio/video player with score synchronization.
+Current pieces:
+- `Liszt-Liebesträume-No.3/`: Contains multiple audio/video takes, MIDI versions, score images, and audio processing visualizations
+
+The TypeScript application (described in PLAN.md) loads different pieces based on URL parameters, creating a multi-track audio/video player with score synchronization for each piece.
 
 ## Development Commands
 
 ### Media Validation
 ```bash
-# List all media files
-find media -type f | sort
+# List all media files for a specific piece
+find <piece-folder> -type f | sort
+
+# Example for Liszt piece
+find Liszt-Liebesträume-No.3 -type f | sort
 
 # Check video codec info
-ffmpeg -i media/home/video/home.mp4 -hide_banner
+ffmpeg -i Liszt-Liebesträume-No.3/home/video/home.mp4 -hide_banner
 
 # Verify file integrity
 ffmpeg -v error -i <file> -f null -
 
 # Remove Windows zone identifiers
-find media -name '*:Zone.Identifier' -delete
+find <piece-folder> -name '*:Zone.Identifier' -delete
 ```
 
 ### Audio Processing
@@ -37,8 +39,8 @@ find media -name '*:Zone.Identifier' -delete
 # Force regenerate existing PNGs
 ./scripts/gen-mp3-png.sh -f
 
-# Process specific directory
-./scripts/gen-mp3-png.sh -r media/home/audio
+# Process specific directory  
+./scripts/gen-mp3-png.sh -r Liszt-Liebesträume-No.3/home/audio
 ```
 
 ### File Transcoding Example
@@ -48,11 +50,30 @@ ffmpeg -i input.mov -c:v libx264 -crf 20 -c:a aac output.mp4
 
 ## File Organization
 
-### Media Structure
-- `media/score/`: Sheet music as `<page>-<system>.png` (e.g., `2-4.png`)
-- `media/home/`, `media/church/`, `media/home-midi/`: Location-based takes
+### Piece Structure  
+Each piece has its own folder containing:
+- `config.json`: Configuration file with all media references and timing data
+- `score/`: Sheet music as `<page>-<system>.png` (e.g., `2-4.png`)
+- `home/`, `church/`, `home-midi/`: Location-based recording takes
   - Each contains `audio/` and `video/` subdirectories
-- `media/image/`: Reference images
+- `image/`: Reference images
+
+### Example: Liszt-Liebesträume-No.3/
+```
+Liszt-Liebesträume-No.3/
+├── config.json
+├── score/
+│   ├── 1-1.png, 1-2.png, ...
+├── home/
+│   ├── audio/ (MP3 files + waveform/spectrogram PNGs)  
+│   └── video/ (MP4 files)
+├── church/
+│   ├── audio/ (Demucs separated tracks)
+│   └── video/ (MP4 files)
+└── home-midi/
+    ├── audio/ (MIDI-generated audio)
+    └── video/ (MP4 files)
+```
 
 ### Naming Conventions
 - Score images: `<page>-<system>.png` (1-indexed integers)
@@ -67,8 +88,15 @@ The `gen-mp3-png.sh` script creates visualization assets:
 
 ## Architecture (Planned TypeScript App)
 
+### Application Loading
+The app reads URL parameters to determine which piece to load:
+- URL: `?piece=Liszt-Liebesträume-No.3` loads `Liszt-Liebesträume-No.3/config.json`
+- All media paths in config.json are relative to the piece folder
+- Future pieces can be added by creating new folders with config.json
+
 ### Core Modules
-- `main.ts`: Entry point, UI generation, state management
+- `main.ts`: Entry point, URL parameter handling, piece loading, UI generation
+- `config/loader.ts`: Dynamic config.json loading and path resolution
 - `config/types.ts`: TypeScript interfaces for JSON configuration
 - `video/`: Native MP4 and YouTube iframe player controllers
 - `audio/engine.ts`: Web Audio API routing for left/right channel assignment
@@ -77,7 +105,8 @@ The `gen-mp3-png.sh` script creates visualization assets:
 - `score/viewer.ts`: Sheet music display with slide-up animation
 
 ### Key Features
-- Tab-based interface for different media sets
+- Multi-piece support via URL parameters
+- Tab-based interface for different recording takes within each piece
 - Dual video players (top/bottom) with independent source selection  
 - Multi-track audio with visual waveform/spectrogram navigation
 - Score synchronization with timing-based sheet switching
@@ -100,6 +129,8 @@ No formal unit tests. Validation involves:
 ## Important Notes
 
 - Media files are gitignored but PNG visualizations are tracked
+- Each piece's config.json uses relative paths from its own folder
 - The project supports both MP4 URLs and YouTube links in the planned app
 - CORS configuration required for cross-domain media access
 - Pure TypeScript implementation with no external frameworks planned
+- URL parameter `piece` determines which folder/config.json to load
