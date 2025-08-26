@@ -1,9 +1,12 @@
 import { ConfigLoader } from './config/loader.js';
+import { VideoManager } from './video/manager.js';
 class MusicPlayerApp {
     constructor() {
         this.config = null;
         this.currentTab = null;
+        this.isPlaying = false;
         this.configLoader = new ConfigLoader();
+        this.videoManager = new VideoManager();
         this.init();
     }
     async init() {
@@ -16,6 +19,7 @@ class MusicPlayerApp {
             this.config = await this.configLoader.loadPieceConfig(piece);
             this.updatePieceInfo(piece);
             this.generateTabs();
+            this.setupGlobalControls();
             this.switchToTab(this.config.defaultTab || this.config.tabs[0].id);
             this.showLoading(false);
         }
@@ -68,6 +72,51 @@ class MusicPlayerApp {
             });
             tabNavEl.appendChild(tabButton);
         });
+    }
+    setupGlobalControls() {
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        if (playPauseBtn) {
+            playPauseBtn.addEventListener('click', () => {
+                this.togglePlayPause();
+            });
+        }
+        this.videoManager.onTimeUpdateCallback((currentTime, source) => {
+            console.log(`Time update from ${source}: ${currentTime}s`);
+        });
+        this.videoManager.onPlayCallback((source) => {
+            console.log(`Play from ${source}`);
+            this.updatePlayPauseButton();
+        });
+        this.videoManager.onPauseCallback((source) => {
+            console.log(`Pause from ${source}`);
+            this.updatePlayPauseButton();
+        });
+    }
+    async togglePlayPause() {
+        try {
+            if (this.videoManager.isAnyPlaying()) {
+                this.videoManager.pauseAll();
+                this.isPlaying = false;
+            }
+            else {
+                await this.videoManager.playAll();
+                this.isPlaying = true;
+            }
+            this.updatePlayPauseButton();
+        }
+        catch (error) {
+            console.error('Playback error:', error);
+            if (error instanceof Error && error.message.includes('play')) {
+                alert('Please click play again to start playback. Browser autoplay restrictions may apply.');
+            }
+        }
+    }
+    updatePlayPauseButton() {
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        if (playPauseBtn) {
+            const isPlaying = this.videoManager.isAnyPlaying();
+            playPauseBtn.textContent = isPlaying ? '⏸️ Pause' : '▶️ Play';
+        }
     }
     switchToTab(tabId) {
         if (!this.config)
@@ -123,41 +172,34 @@ class MusicPlayerApp {
         this.updateVideoPlayers();
         this.updateChannelSelectors();
     }
-    updateVideoPlayers() {
+    async updateVideoPlayers() {
         const topVideoSelect = document.getElementById('top-video');
         const bottomVideoSelect = document.getElementById('bottom-video');
-        const topContainer = document.getElementById('top-video-container');
-        const bottomContainer = document.getElementById('bottom-video-container');
-        if (!topVideoSelect || !bottomVideoSelect || !topContainer || !bottomContainer)
+        if (!topVideoSelect || !bottomVideoSelect || !this.currentTab)
             return;
-        if (topVideoSelect.value) {
-            topContainer.classList.remove('hidden');
-            this.loadVideo('top-video-player', topVideoSelect.value);
+        try {
+            if (topVideoSelect.value) {
+                const topVideo = this.currentTab.videos.find(v => v.id === topVideoSelect.value);
+                if (topVideo) {
+                    await this.videoManager.loadTopVideo(topVideo);
+                }
+            }
+            else {
+                this.videoManager.unloadVideo('top');
+            }
+            if (bottomVideoSelect.value) {
+                const bottomVideo = this.currentTab.videos.find(v => v.id === bottomVideoSelect.value);
+                if (bottomVideo) {
+                    await this.videoManager.loadBottomVideo(bottomVideo);
+                }
+            }
+            else {
+                this.videoManager.unloadVideo('bottom');
+            }
         }
-        else {
-            topContainer.classList.add('hidden');
-        }
-        if (bottomVideoSelect.value) {
-            bottomContainer.classList.remove('hidden');
-            this.loadVideo('bottom-video-player', bottomVideoSelect.value);
-        }
-        else {
-            bottomContainer.classList.add('hidden');
-        }
-    }
-    loadVideo(playerId, videoId) {
-        if (!this.currentTab)
-            return;
-        const video = this.currentTab.videos.find(v => v.id === videoId);
-        const videoPlayer = document.getElementById(playerId);
-        if (!video || !videoPlayer)
-            return;
-        if (video.type === 'mp4') {
-            videoPlayer.src = video.url;
-            videoPlayer.style.display = 'block';
-        }
-        else if (video.type === 'youtube') {
-            console.warn('YouTube videos not yet implemented');
+        catch (error) {
+            console.error('Error loading videos:', error);
+            alert(`Failed to load video: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
     updateAudioGroups() {
@@ -283,32 +325,19 @@ class MusicPlayerApp {
                 rightChannelSelect.appendChild(rightOption);
             });
         }
-        if (topVideoSelect?.value) {
-            const topVideo = this.currentTab.videos.find(v => v.id === topVideoSelect.value);
-            if (topVideo && topVideo.type === 'mp4') {
+        const activePlayers = this.videoManager.getActivePlayers();
+        activePlayers.forEach(({ position, source }) => {
+            if (source.type === 'mp4') {
                 const leftOption = document.createElement('option');
-                leftOption.value = `video:top`;
-                leftOption.textContent = `📹 ${topVideo.label} (Top)`;
+                leftOption.value = `video:${position}`;
+                leftOption.textContent = `📹 ${source.label} (${position === 'top' ? 'Top' : 'Bottom'})`;
                 leftChannelSelect.appendChild(leftOption);
                 const rightOption = document.createElement('option');
-                rightOption.value = `video:top`;
-                rightOption.textContent = `📹 ${topVideo.label} (Top)`;
+                rightOption.value = `video:${position}`;
+                rightOption.textContent = `📹 ${source.label} (${position === 'top' ? 'Top' : 'Bottom'})`;
                 rightChannelSelect.appendChild(rightOption);
             }
-        }
-        if (bottomVideoSelect?.value) {
-            const bottomVideo = this.currentTab.videos.find(v => v.id === bottomVideoSelect.value);
-            if (bottomVideo && bottomVideo.type === 'mp4') {
-                const leftOption = document.createElement('option');
-                leftOption.value = `video:bottom`;
-                leftOption.textContent = `📹 ${bottomVideo.label} (Bottom)`;
-                leftChannelSelect.appendChild(leftOption);
-                const rightOption = document.createElement('option');
-                rightOption.value = `video:bottom`;
-                rightOption.textContent = `📹 ${bottomVideo.label} (Bottom)`;
-                rightChannelSelect.appendChild(rightOption);
-            }
-        }
+        });
     }
     applyDefaults() {
         if (!this.currentTab)

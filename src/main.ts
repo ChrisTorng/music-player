@@ -1,13 +1,17 @@
 import { ConfigLoader } from './config/loader.js';
 import { Config, Tab } from './config/types.js';
+import { VideoManager } from './video/manager.js';
 
 class MusicPlayerApp {
   private config: Config | null = null;
   private currentTab: Tab | null = null;
   private configLoader: ConfigLoader;
+  private videoManager: VideoManager;
+  private isPlaying: boolean = false;
 
   constructor() {
     this.configLoader = new ConfigLoader();
+    this.videoManager = new VideoManager();
     this.init();
   }
 
@@ -28,6 +32,7 @@ class MusicPlayerApp {
       // Update UI
       this.updatePieceInfo(piece);
       this.generateTabs();
+      this.setupGlobalControls();
       this.switchToTab(this.config.defaultTab || this.config.tabs[0].id);
       
       this.showLoading(false);
@@ -93,6 +98,58 @@ class MusicPlayerApp {
       
       tabNavEl.appendChild(tabButton);
     });
+  }
+
+  private setupGlobalControls(): void {
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener('click', () => {
+        this.togglePlayPause();
+      });
+    }
+
+    // Set up video manager callbacks
+    this.videoManager.onTimeUpdateCallback((currentTime, source) => {
+      // TODO: Update visual cursors and sync other players
+      console.log(`Time update from ${source}: ${currentTime}s`);
+    });
+
+    this.videoManager.onPlayCallback((source) => {
+      console.log(`Play from ${source}`);
+      this.updatePlayPauseButton();
+    });
+
+    this.videoManager.onPauseCallback((source) => {
+      console.log(`Pause from ${source}`);
+      this.updatePlayPauseButton();
+    });
+  }
+
+  private async togglePlayPause(): Promise<void> {
+    try {
+      if (this.videoManager.isAnyPlaying()) {
+        this.videoManager.pauseAll();
+        this.isPlaying = false;
+      } else {
+        await this.videoManager.playAll();
+        this.isPlaying = true;
+      }
+      this.updatePlayPauseButton();
+    } catch (error) {
+      console.error('Playback error:', error);
+      // Handle autoplay restrictions
+      if (error instanceof Error && error.message.includes('play')) {
+        alert('Please click play again to start playback. Browser autoplay restrictions may apply.');
+      }
+    }
+  }
+
+  private updatePlayPauseButton(): void {
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    if (playPauseBtn) {
+      const isPlaying = this.videoManager.isAnyPlaying();
+      playPauseBtn.textContent = isPlaying ? '⏸️ Pause' : '▶️ Play';
+    }
   }
 
   private switchToTab(tabId: string): void {
@@ -168,47 +225,41 @@ class MusicPlayerApp {
     this.updateChannelSelectors();
   }
 
-  private updateVideoPlayers(): void {
+  private async updateVideoPlayers(): Promise<void> {
     const topVideoSelect = document.getElementById('top-video') as HTMLSelectElement;
     const bottomVideoSelect = document.getElementById('bottom-video') as HTMLSelectElement;
-    const topContainer = document.getElementById('top-video-container');
-    const bottomContainer = document.getElementById('bottom-video-container');
     
-    if (!topVideoSelect || !bottomVideoSelect || !topContainer || !bottomContainer) return;
+    if (!topVideoSelect || !bottomVideoSelect || !this.currentTab) return;
     
-    // Show/hide video containers based on selection
-    if (topVideoSelect.value) {
-      topContainer.classList.remove('hidden');
-      this.loadVideo('top-video-player', topVideoSelect.value);
-    } else {
-      topContainer.classList.add('hidden');
-    }
-    
-    if (bottomVideoSelect.value) {
-      bottomContainer.classList.remove('hidden');
-      this.loadVideo('bottom-video-player', bottomVideoSelect.value);
-    } else {
-      bottomContainer.classList.add('hidden');
+    try {
+      // Handle top video
+      if (topVideoSelect.value) {
+        const topVideo = this.currentTab.videos.find(v => v.id === topVideoSelect.value);
+        if (topVideo) {
+          await this.videoManager.loadTopVideo(topVideo);
+        }
+      } else {
+        this.videoManager.unloadVideo('top');
+      }
+      
+      // Handle bottom video
+      if (bottomVideoSelect.value) {
+        const bottomVideo = this.currentTab.videos.find(v => v.id === bottomVideoSelect.value);
+        if (bottomVideo) {
+          await this.videoManager.loadBottomVideo(bottomVideo);
+        }
+      } else {
+        this.videoManager.unloadVideo('bottom');
+      }
+      
+    } catch (error) {
+      console.error('Error loading videos:', error);
+      alert(`Failed to load video: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private loadVideo(playerId: string, videoId: string): void {
-    if (!this.currentTab) return;
-    
-    const video = this.currentTab.videos.find(v => v.id === videoId);
-    const videoPlayer = document.getElementById(playerId) as HTMLVideoElement;
-    
-    if (!video || !videoPlayer) return;
-    
-    if (video.type === 'mp4') {
-      videoPlayer.src = video.url;
-      videoPlayer.style.display = 'block';
-      // TODO: Hide any YouTube iframe if exists
-    } else if (video.type === 'youtube') {
-      // TODO: Implement YouTube iframe player
-      console.warn('YouTube videos not yet implemented');
-    }
-  }
+  // This method is no longer needed as VideoManager handles loading
+  // private loadVideo(playerId: string, videoId: string): void { ... }
 
   private updateAudioGroups(): void {
     if (!this.currentTab) return;
@@ -368,36 +419,21 @@ class MusicPlayerApp {
       });
     }
     
-    // Add video track options (only for playing videos)
-    if (topVideoSelect?.value) {
-      const topVideo = this.currentTab.videos.find(v => v.id === topVideoSelect.value);
-      if (topVideo && topVideo.type === 'mp4') {
+    // Add video track options (only for loaded MP4 videos)
+    const activePlayers = this.videoManager.getActivePlayers();
+    activePlayers.forEach(({ position, source }) => {
+      if (source.type === 'mp4') {
         const leftOption = document.createElement('option');
-        leftOption.value = `video:top`;
-        leftOption.textContent = `📹 ${topVideo.label} (Top)`;
+        leftOption.value = `video:${position}`;
+        leftOption.textContent = `📹 ${source.label} (${position === 'top' ? 'Top' : 'Bottom'})`;
         leftChannelSelect.appendChild(leftOption);
         
         const rightOption = document.createElement('option');
-        rightOption.value = `video:top`;
-        rightOption.textContent = `📹 ${topVideo.label} (Top)`;
+        rightOption.value = `video:${position}`;
+        rightOption.textContent = `📹 ${source.label} (${position === 'top' ? 'Top' : 'Bottom'})`;
         rightChannelSelect.appendChild(rightOption);
       }
-    }
-    
-    if (bottomVideoSelect?.value) {
-      const bottomVideo = this.currentTab.videos.find(v => v.id === bottomVideoSelect.value);
-      if (bottomVideo && bottomVideo.type === 'mp4') {
-        const leftOption = document.createElement('option');
-        leftOption.value = `video:bottom`;
-        leftOption.textContent = `📹 ${bottomVideo.label} (Bottom)`;
-        leftChannelSelect.appendChild(leftOption);
-        
-        const rightOption = document.createElement('option');
-        rightOption.value = `video:bottom`;
-        rightOption.textContent = `📹 ${bottomVideo.label} (Bottom)`;
-        rightChannelSelect.appendChild(rightOption);
-      }
-    }
+    });
   }
 
   private applyDefaults(): void {
