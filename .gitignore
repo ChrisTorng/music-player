@@ -1,2 +1,7 @@
-Liszt-Liebesträume-No.3/
-#*.mp4
+#iszt-Liebesträume-No.3/
+*.mp4
+*.mp3
+*.mid
+*.png
+# *.waveform.png
+# *.spectrogram.png
