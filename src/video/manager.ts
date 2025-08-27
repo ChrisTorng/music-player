@@ -59,6 +59,17 @@ export class VideoManager {
         throw new Error(`Video element ${playerId} not found`);
       }
       
+      // Ensure video element is visible and clean up any YouTube containers
+      const container = document.getElementById(containerId);
+      const youtubeDiv = document.getElementById(`${playerId}-youtube`);
+      if (youtubeDiv) {
+        youtubeDiv.remove();
+      }
+      
+      videoElement.style.display = 'block';
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      
       player = new NativeVideoPlayer(videoElement);
       await player.load(videoSource.url);
       

@@ -19,7 +19,7 @@ export class YouTubePlayer {
   constructor(containerId: string, videoUrl: string) {
     this.containerId = containerId;
     this.videoId = this.extractVideoId(videoUrl);
-    this.loadYouTubeAPI();
+    // Don't auto-load, wait for explicit load() call
   }
 
   private extractVideoId(url: string): string {
@@ -106,8 +106,29 @@ export class YouTubePlayer {
 
   private onPlayerReady(event: any): void {
     console.log('YouTube player ready');
-    const duration = this.player.getDuration();
-    this.onLoadedMetadata?.(duration);
+    // Duration may not be available immediately, wait for video data
+    this.waitForVideoData();
+  }
+
+  private waitForVideoData(): void {
+    const checkDuration = () => {
+      if (this.player && typeof this.player.getDuration === 'function') {
+        try {
+          const duration = this.player.getDuration();
+          if (duration && duration > 0) {
+            this.onLoadedMetadata?.(duration);
+            return;
+          }
+        } catch (error) {
+          // Duration not ready yet
+        }
+      }
+      
+      // Retry after a short delay
+      setTimeout(checkDuration, 500);
+    };
+    
+    checkDuration();
   }
 
   private onPlayerStateChange(event: any): void {
@@ -117,6 +138,8 @@ export class YouTubePlayer {
       case window.YT.PlayerState.PLAYING:
         this.startTimeUpdateLoop();
         this.onPlay?.();
+        // Ensure duration is available when video starts playing
+        this.ensureDurationAvailable();
         break;
       case window.YT.PlayerState.PAUSED:
         this.stopTimeUpdateLoop();
@@ -126,6 +149,25 @@ export class YouTubePlayer {
         this.stopTimeUpdateLoop();
         this.onEnded?.();
         break;
+      case window.YT.PlayerState.CUED:
+      case window.YT.PlayerState.BUFFERING:
+        // Video metadata should be available
+        this.ensureDurationAvailable();
+        break;
+    }
+  }
+
+  private ensureDurationAvailable(): void {
+    if (this.player && typeof this.player.getDuration === 'function') {
+      try {
+        const duration = this.player.getDuration();
+        if (duration && duration > 0) {
+          this.onLoadedMetadata?.(duration);
+        }
+      } catch (error) {
+        // Duration not available yet, that's OK
+        console.log('YouTube duration not yet available');
+      }
     }
   }
 
@@ -148,11 +190,25 @@ export class YouTubePlayer {
 
   async load(url: string): Promise<void> {
     this.videoId = this.extractVideoId(url);
+    
     if (this.player && this.player.loadVideoById) {
+      // Player already exists, just load new video
       this.player.loadVideoById(this.videoId);
       return Promise.resolve();
     } else {
+      // Initialize player for first time
       await this.loadYouTubeAPI();
+      return new Promise((resolve) => {
+        // Wait for player to be ready
+        const checkReady = () => {
+          if (this.player && this.player.getPlayerState) {
+            resolve();
+          } else {
+            setTimeout(checkReady, 100);
+          }
+        };
+        checkReady();
+      });
     }
   }
 

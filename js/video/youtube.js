@@ -3,7 +3,6 @@ export class YouTubePlayer {
         this.player = null;
         this.containerId = containerId;
         this.videoId = this.extractVideoId(videoUrl);
-        this.loadYouTubeAPI();
     }
     extractVideoId(url) {
         const regexps = [
@@ -77,8 +76,24 @@ export class YouTubePlayer {
     }
     onPlayerReady(event) {
         console.log('YouTube player ready');
-        const duration = this.player.getDuration();
-        this.onLoadedMetadata?.(duration);
+        this.waitForVideoData();
+    }
+    waitForVideoData() {
+        const checkDuration = () => {
+            if (this.player && typeof this.player.getDuration === 'function') {
+                try {
+                    const duration = this.player.getDuration();
+                    if (duration && duration > 0) {
+                        this.onLoadedMetadata?.(duration);
+                        return;
+                    }
+                }
+                catch (error) {
+                }
+            }
+            setTimeout(checkDuration, 500);
+        };
+        checkDuration();
     }
     onPlayerStateChange(event) {
         const state = event.data;
@@ -86,6 +101,7 @@ export class YouTubePlayer {
             case window.YT.PlayerState.PLAYING:
                 this.startTimeUpdateLoop();
                 this.onPlay?.();
+                this.ensureDurationAvailable();
                 break;
             case window.YT.PlayerState.PAUSED:
                 this.stopTimeUpdateLoop();
@@ -95,6 +111,23 @@ export class YouTubePlayer {
                 this.stopTimeUpdateLoop();
                 this.onEnded?.();
                 break;
+            case window.YT.PlayerState.CUED:
+            case window.YT.PlayerState.BUFFERING:
+                this.ensureDurationAvailable();
+                break;
+        }
+    }
+    ensureDurationAvailable() {
+        if (this.player && typeof this.player.getDuration === 'function') {
+            try {
+                const duration = this.player.getDuration();
+                if (duration && duration > 0) {
+                    this.onLoadedMetadata?.(duration);
+                }
+            }
+            catch (error) {
+                console.log('YouTube duration not yet available');
+            }
         }
     }
     startTimeUpdateLoop() {
@@ -120,6 +153,17 @@ export class YouTubePlayer {
         }
         else {
             await this.loadYouTubeAPI();
+            return new Promise((resolve) => {
+                const checkReady = () => {
+                    if (this.player && this.player.getPlayerState) {
+                        resolve();
+                    }
+                    else {
+                        setTimeout(checkReady, 100);
+                    }
+                };
+                checkReady();
+            });
         }
     }
     async play() {

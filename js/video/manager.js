@@ -41,6 +41,14 @@ export class VideoManager {
             if (!videoElement) {
                 throw new Error(`Video element ${playerId} not found`);
             }
+            const container = document.getElementById(containerId);
+            const youtubeDiv = document.getElementById(`${playerId}-youtube`);
+            if (youtubeDiv) {
+                youtubeDiv.remove();
+            }
+            videoElement.style.display = 'block';
+            videoElement.style.width = '100%';
+            videoElement.style.height = '100%';
             player = new NativeVideoPlayer(videoElement);
             await player.load(videoSource.url);
         }
