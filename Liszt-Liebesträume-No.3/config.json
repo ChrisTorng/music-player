@@ -115,7 +115,7 @@
       },
       "defaults": {
         "topVideoId": "home_v1",
-        "bottomVideoId": null,
+        "bottomVideoId": "home_v2",
         "audioGroupId": "home_audio",
         "routing": {
           "left": { "type": "audio", "id": "home_piano" },
@@ -236,6 +236,12 @@
       "id": "church",
       "title": "Church Recording", 
       "videos": [
+        {
+          "id": "church_v2",
+          "type": "mp4",
+          "url": "church/video/Liszt, Libestraume No.3 Church Performance.mp4",
+          "label": "Church Performance"
+        },
         {
           "id": "church_v1",
           // "type": "youtube",
@@ -418,8 +424,8 @@
         "preload": { "ahead": 2 }
       },
       "defaults": {
-        "topVideoId": "church_v1", 
-        "bottomVideoId": null,
+        "topVideoId": "church_v2", 
+        "bottomVideoId": "church_v1",
         "audioGroupId": "church_demucs6",
         "routing": {
           "left": { "type": "audio", "id": "church6_piano" },
