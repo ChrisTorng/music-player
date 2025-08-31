@@ -12,6 +12,7 @@ class MusicPlayerApp {
   private audioEngine: AudioEngine;
   private cursorRaf: number | null = null;
   private trackImageInfo: Map<string, { pxPerSecond: number; imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null }>;
+  private pieceName: string = '';
 
   constructor() {
     this.configLoader = new ConfigLoader();
@@ -26,7 +27,7 @@ class MusicPlayerApp {
       this.showLoading(true);
       
       // Parse URL parameters
-      const { piece } = ConfigLoader.parseUrlParams();
+      const { piece, tab } = ConfigLoader.parseUrlParams();
       
       if (!piece) {
         throw new Error('No piece specified. Please add ?piece=<folder-name> to URL');
@@ -34,6 +35,7 @@ class MusicPlayerApp {
       
       // Load config
       this.config = await this.configLoader.loadPieceConfig(piece);
+      this.pieceName = piece;
 
       // Prepare audio engine
       await this.audioEngine.initialize();
@@ -42,7 +44,10 @@ class MusicPlayerApp {
       this.updatePieceInfo(piece);
       this.generateTabs();
       this.setupGlobalControls();
-      this.switchToTab(this.config.defaultTab || this.config.tabs[0].id);
+      // Choose initial tab from URL (?tab=), fallback to defaultTab or first
+      const availableTabIds = new Set(this.config.tabs.map(t => t.id));
+      const initialTab = (tab && availableTabIds.has(tab)) ? tab : (this.config.defaultTab || this.config.tabs[0].id);
+      this.switchToTab(initialTab);
       
       this.showLoading(false);
       
@@ -94,18 +99,20 @@ class MusicPlayerApp {
     // Clear existing tabs
     tabNavEl.innerHTML = '';
     
-    // Generate tab buttons
+    // Generate tab links (navigate via query string and reload)
     this.config.tabs.forEach(tab => {
-      const tabButton = document.createElement('button');
-      tabButton.className = 'tab';
-      tabButton.textContent = tab.title;
-      tabButton.dataset.tabId = tab.id;
-      
-      tabButton.addEventListener('click', () => {
-        this.switchToTab(tab.id);
-      });
-      
-      tabNavEl.appendChild(tabButton);
+      const a = document.createElement('a');
+      a.className = 'tab';
+      a.textContent = tab.title;
+      a.dataset.tabId = tab.id;
+      // Preserve existing params, set piece and tab
+      const url = new URL(window.location.href);
+      if (this.pieceName) {
+        url.searchParams.set('piece', this.pieceName);
+      }
+      url.searchParams.set('tab', tab.id);
+      a.href = url.toString();
+      tabNavEl.appendChild(a);
     });
   }
 

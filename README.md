@@ -2,10 +2,10 @@
 
 以純瀏覽器、純 TypeScript 實作的多素材音樂播放介面：
 - 以 URL 參數 `?piece=<folder-name>` 載入指定樂曲資料夾的 `config.json`。
-- 同一樂曲內以「頁籤」切換素材組；左側可顯示上下兩個影片，右側管理多軌音訊與視覺化（波形/頻譜 PNG）。
+- 同一樂曲內以「頁籤」切換素材組；頁籤以 Query String 切換為新網址 `?piece=...&tab=<tab-id>` 並重新載入，因此每個頁籤的播放狀態互不影響；左側可顯示上下兩個影片，右側管理多軌音訊與視覺化（波形/頻譜 PNG）。
 - 支援以預渲染的樂譜行圖（`score/<page>-<system>.png`）依時間自動切換（詳見 PLAN.md 里程碑）。
 
-目前狀態：已完成基本 UI 與設定載入、MP4 顯示與頁籤/路由器雛型；YouTube、Web Audio 路由、互動式波形/頻譜與樂譜同步等核心功能將依里程碑逐步落實（見下方「里程碑」）。
+目前狀態：已完成基本 UI 與設定載入、MP4 顯示與以 Query String 切換的頁籤導向雛型；YouTube、Web Audio 路由、互動式波形/頻譜與樂譜同步等核心功能將依里程碑逐步落實（見下方「里程碑」）。
 
 ## 快速開始
 - 先備需求：Node.js 18+、npm；（選用）ffmpeg 用於媒體檔檢查與轉碼。
@@ -18,7 +18,7 @@
 - CORS 注意事項：如載入跨網域 MP4/MP3，請確保伺服端允許跨域並設定 `<video>`/Fetch 為 `crossorigin="anonymous"`。
 
 ## 專案結構
-- `index.html`：單頁入口與介面骨架（頁籤 / 左右分欄 / 載入中與錯誤顯示）。
+- `index.html`：單頁入口與介面骨架（頁籤連結 / 左右分欄 / 載入中與錯誤顯示）。
 - `css/`、`js/`：已編譯的樣式與 JavaScript；對應 `src/` 來源。
 - 注意：請勿直接修改 `js/` 內檔案；所有程式碼變更請在 `src/` 進行後以 `npm run build` 產生對應輸出。
 - `src/`：TypeScript 原始碼（`config/types.ts`, `config/loader.ts`, `main.ts` 等）。
@@ -35,7 +35,9 @@
   - `audioGroups[]`：音訊組別；每組含多軌 `tracks[]`，每軌含檔案 `url` 與視覺圖 `images.waveform/spectrogram`（PNG）。
   - `score`：`basePath`（相對於樂曲資料夾）、`entries[]`（按時間切換的樂譜行檔名與時間點）、動畫設定與預載範圍。
   - `defaults`：預設上/下影片、預設音訊組別與左右聲道路由（可指向音軌或正在播放的影片）。
-- 網址參數：`?piece=<folder-name>` 會載入 `<folder-name>/config.json`，並自動將相對路徑轉成實際 URL。
+- 網址參數：
+  - `?piece=<folder-name>` 會載入 `<folder-name>/config.json`，並自動將相對路徑轉成實際 URL。
+  - `&tab=<tab-id>` 指定啟動頁籤；點擊頁籤時也會以此參數導向並重新載入。
  - JSONC 支援：為了便於註解配置，`src/config/loader.ts` 會在瀏覽器端讀取檔案後移除 `//` 與 `/* ... */` 註解再解析；因此 `config.json` 可保留註解格式（建議保持副檔名為 `.json` 以利部署）。
 
 ## 媒體與命名規範
@@ -59,7 +61,7 @@
 - PR 提交規範：請勿包含 `js/` 或 `css/` 的手動修改；僅提交 `src/` 的來源變更與文件、媒體檔案等必要內容。
 
 ## 里程碑（摘自 PLAN.md）
-1. URL 參數解析與頁籤生成
+1. URL 參數解析與頁籤連結（`?tab=`）生成＋重新載入導向
 2. 單組 MP4 播放＋全域播放控制
 3. 音訊載入＋波形游標同步（音訊為主時鐘）
 4. 音訊組別切換與動態軌清單

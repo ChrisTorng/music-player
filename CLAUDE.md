@@ -9,7 +9,7 @@ This is a universal music player application supporting multiple classical music
 Current pieces:
 - `Liszt-Liebesträume-No.3/`: Contains multiple audio/video takes, MIDI versions, score images, and audio processing visualizations
 
-The TypeScript application (described in PLAN.md) loads different pieces based on URL parameters, creating a multi-track audio/video player with score synchronization for each piece.
+The TypeScript application (described in PLAN.md) loads different pieces based on URL parameters, creating a multi-track audio/video player with score synchronization for each piece. Tab switching is performed via URL query string (`?tab=<id>`) and triggers a full page reload so each tab has an independent runtime state (no cross-tab state retention within a single page instance).
 
 ## Development Commands
 
@@ -91,6 +91,7 @@ The `gen-mp3-png.sh` script creates visualization assets:
 ### Application Loading
 The app reads URL parameters to determine which piece to load:
 - URL: `?piece=Liszt-Liebesträume-No.3` loads `Liszt-Liebesträume-No.3/config.json`
+- URL: `&tab=<tab-id>` selects which tab to open for that piece; clicking a tab navigates to this URL and reloads the page
 - All media paths in config.json are relative to the piece folder
 - Future pieces can be added by creating new folders with config.json
 
@@ -106,7 +107,7 @@ The app reads URL parameters to determine which piece to load:
 
 ### Key Features
 - Multi-piece support via URL parameters
-- Tab-based interface for different recording takes within each piece
+- Tab-based interface for different recording takes within each piece (tabs are URL links using `?tab=`; navigation reloads the page and initializes only the selected tab)
 - Dual video players (top/bottom) with independent source selection  
 - Multi-track audio with visual waveform/spectrogram navigation
 - Score synchronization with timing-based sheet switching

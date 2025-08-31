@@ -136,10 +136,11 @@ export class ConfigLoader {
     }
   }
 
-  static parseUrlParams(): { piece?: string } {
+  static parseUrlParams(): { piece?: string; tab?: string } {
     const params = new URLSearchParams(window.location.search);
     return {
-      piece: params.get('piece') || undefined
+      piece: params.get('piece') || undefined,
+      tab: params.get('tab') || undefined,
     };
   }
 }
