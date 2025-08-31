@@ -247,11 +247,47 @@
           // "type": "youtube",
           // "url": "https://www.youtube.com/watch?v=oT6bomn_kns",
           "type": "mp4",
-          "url": "church/video/Liszt, Liebesträume No.3 MIDI Output - Ableton Live.mp4",
+          "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
           "label": "Church Ableton Live"
         }
       ],
       "audioGroups": [
+        {
+          "id": "church_origin_others",
+          "label": "Church Audio (Origin + Others)",
+          "tracks": [
+            {
+              "id": "church_origin",
+              "url": "church/audio/origin+others/origin.mp3",
+              "label": "Origin",
+              "images": {
+                "waveform": "church/audio/origin+others/origin.waveform.png",
+                "spectrogram": "church/audio/origin+others/origin.spectrogram.png",
+                "pxPerSecond": 100
+              }
+            },
+            {
+              "id": "church_instrumental",
+              "url": "church/audio/origin+others/instrumental.mp3",
+              "label": "Instrumental",
+              "images": {
+                "waveform": "church/audio/origin+others/instrumental.waveform.png",
+                "spectrogram": "church/audio/origin+others/instrumental.spectrogram.png",
+                "pxPerSecond": 100
+              }
+            },
+            {
+              "id": "church_no_noise",
+              "url": "church/audio/origin+others/no noise.mp3",
+              "label": "No Noise",
+              "images": {
+                "waveform": "church/audio/origin+others/no noise.waveform.png",
+                "spectrogram": "church/audio/origin+others/no noise.spectrogram.png",
+                "pxPerSecond": 100
+              }
+            }
+          ]
+        },
         {
           "id": "church_demucs4",
           "label": "Church Audio (Demucs 4)",
@@ -426,10 +462,10 @@
       "defaults": {
         "topVideoId": "church_v2", 
         "bottomVideoId": "church_v1",
-        "audioGroupId": "church_demucs6",
+        "audioGroupId": "church_origin_others",
         "routing": {
-          "left": { "type": "audio", "id": "church6_piano" },
-          "right": { "type": "audio", "id": "church6_mix" }
+          "left": { "type": "audio", "id": "church_origin" },
+          "right": { "type": "audio", "id": "church_no_noise" }
         },
         "visuals": {
           "waveform": true,
