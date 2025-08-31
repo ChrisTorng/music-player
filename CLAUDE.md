@@ -134,3 +134,5 @@ No formal unit tests. Validation involves:
 - CORS configuration required for cross-domain media access
 - Pure TypeScript implementation with no external frameworks planned
 - URL parameter `piece` determines which folder/config.json to load
+ - Source of truth: edit `src/` (TypeScript) only. Do not hand-edit `js/`; run `npm run build` to regenerate compiled output.
+ - Config loader supports JSONC (comments): comments in `config.json` are stripped at runtime before parsing.

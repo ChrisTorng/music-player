@@ -20,6 +20,7 @@
 ## 專案結構
 - `index.html`：單頁入口與介面骨架（頁籤 / 左右分欄 / 載入中與錯誤顯示）。
 - `css/`、`js/`：已編譯的樣式與 JavaScript；對應 `src/` 來源。
+- 注意：請勿直接修改 `js/` 內檔案；所有程式碼變更請在 `src/` 進行後以 `npm run build` 產生對應輸出。
 - `src/`：TypeScript 原始碼（`config/types.ts`, `config/loader.ts`, `main.ts` 等）。
 - `Liszt-Liebesträume-No.3/`：範例樂曲資料夾，內含：
   - `config.json`：此樂曲的設定；所有路徑以資料夾為相對基準。
@@ -35,6 +36,7 @@
   - `score`：`basePath`（相對於樂曲資料夾）、`entries[]`（按時間切換的樂譜行檔名與時間點）、動畫設定與預載範圍。
   - `defaults`：預設上/下影片、預設音訊組別與左右聲道路由（可指向音軌或正在播放的影片）。
 - 網址參數：`?piece=<folder-name>` 會載入 `<folder-name>/config.json`，並自動將相對路徑轉成實際 URL。
+ - JSONC 支援：為了便於註解配置，`src/config/loader.ts` 會在瀏覽器端讀取檔案後移除 `//` 與 `/* ... */` 註解再解析；因此 `config.json` 可保留註解格式（建議保持副檔名為 `.json` 以利部署）。
 
 ## 媒體與命名規範
 - 樂譜行圖：`<piece>/score/<page>-<system>.png`（兩個 1 起算整數）。
@@ -54,6 +56,7 @@
 - 建置：`npm run build`
 - 即時編譯：`npm run dev`
 - 啟動本機伺服：`npm run serve`
+- PR 提交規範：請勿包含 `js/` 或 `css/` 的手動修改；僅提交 `src/` 的來源變更與文件、媒體檔案等必要內容。
 
 ## 里程碑（摘自 PLAN.md）
 1. URL 參數解析與頁籤生成
@@ -71,4 +74,3 @@
 
 ## 授權
 本專案採用 MIT 授權。詳見 `LICENSE` 檔案。
-

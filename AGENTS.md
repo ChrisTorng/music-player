@@ -1,5 +1,11 @@
 # Repository Guidelines
 
+## Source of Truth: Edit `src/`, Not `js/`
+- Edit TypeScript in `src/` only. Do not modify files under `js/` — they are compiled outputs.
+- To change runtime behavior, update `src/` and run `npm run build` to regenerate `js/`.
+- Pull requests must exclude manual edits to `js/` and `css/`. Include only `src/` changes (plus docs/config/media as needed).
+- Code review checklist: reject diffs that touch `js/` unless they are build artifacts shown only for reference.
+
 ## Project Structure & Module Organization
 - `media/score`: Sheet images named `<page>-<system>.png` (e.g., `2-4.png`).
 - `media/image`: Reference images (e.g., `20250803 Liszt.png`).
@@ -13,6 +19,11 @@
   - Probe codecs: `ffmpeg -i media/home/video/home.mp4 -hide_banner`
   - Check decode errors: `ffmpeg -v error -i <file> -f null -`
 - Transcode (example): `ffmpeg -i input.mov -c:v libx264 -crf 20 -c:a aac output.mp4`
+
+### App build notes
+- The web app code is authored in `src/` (TypeScript) and compiled to `js/`.
+- Use `npm run build` or `npm run dev` during development; never hand-edit `js/`.
+- Config loader supports JSONC: `src/config/loader.ts` strips `//` and `/* ... */` comments at runtime before `JSON.parse`.
 
 ## Naming Conventions
 - Scores: `media/score/<page>-<system>.png` (two integers, 1-indexed).
