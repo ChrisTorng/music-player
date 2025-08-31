@@ -116,7 +116,8 @@ export class ConfigLoader {
     static parseUrlParams() {
         const params = new URLSearchParams(window.location.search);
         return {
-            piece: params.get('piece') || undefined
+            piece: params.get('piece') || undefined,
+            tab: params.get('tab') || undefined,
         };
     }
 }

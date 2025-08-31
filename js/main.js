@@ -7,6 +7,7 @@ class MusicPlayerApp {
         this.currentTab = null;
         this.isPlaying = false;
         this.cursorRaf = null;
+        this.pieceName = '';
         this.configLoader = new ConfigLoader();
         this.videoManager = new VideoManager();
         this.audioEngine = new AudioEngine();
@@ -16,16 +17,19 @@ class MusicPlayerApp {
     async init() {
         try {
             this.showLoading(true);
-            const { piece } = ConfigLoader.parseUrlParams();
+            const { piece, tab } = ConfigLoader.parseUrlParams();
             if (!piece) {
                 throw new Error('No piece specified. Please add ?piece=<folder-name> to URL');
             }
             this.config = await this.configLoader.loadPieceConfig(piece);
+            this.pieceName = piece;
             await this.audioEngine.initialize();
             this.updatePieceInfo(piece);
             this.generateTabs();
             this.setupGlobalControls();
-            this.switchToTab(this.config.defaultTab || this.config.tabs[0].id);
+            const availableTabIds = new Set(this.config.tabs.map(t => t.id));
+            const initialTab = (tab && availableTabIds.has(tab)) ? tab : (this.config.defaultTab || this.config.tabs[0].id);
+            this.switchToTab(initialTab);
             this.showLoading(false);
         }
         catch (error) {
@@ -68,14 +72,17 @@ class MusicPlayerApp {
             return;
         tabNavEl.innerHTML = '';
         this.config.tabs.forEach(tab => {
-            const tabButton = document.createElement('button');
-            tabButton.className = 'tab';
-            tabButton.textContent = tab.title;
-            tabButton.dataset.tabId = tab.id;
-            tabButton.addEventListener('click', () => {
-                this.switchToTab(tab.id);
-            });
-            tabNavEl.appendChild(tabButton);
+            const a = document.createElement('a');
+            a.className = 'tab';
+            a.textContent = tab.title;
+            a.dataset.tabId = tab.id;
+            const url = new URL(window.location.href);
+            if (this.pieceName) {
+                url.searchParams.set('piece', this.pieceName);
+            }
+            url.searchParams.set('tab', tab.id);
+            a.href = url.toString();
+            tabNavEl.appendChild(a);
         });
     }
     setupGlobalControls() {
