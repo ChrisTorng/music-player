@@ -51,6 +51,7 @@ export class VideoManager {
             videoElement.style.height = '100%';
             player = new NativeVideoPlayer(videoElement);
             await player.load(videoSource.url);
+            player.mute(true);
         }
         else if (videoSource.type === 'youtube') {
             const container = document.getElementById(containerId);
@@ -64,6 +65,7 @@ export class VideoManager {
                 container.appendChild(youtubeDiv);
                 player = new YouTubePlayer(youtubeDiv.id, videoSource.url);
                 await player.load(videoSource.url);
+                player.mute(true);
             }
             else {
                 throw new Error(`Container ${containerId} not found`);

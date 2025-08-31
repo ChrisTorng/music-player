@@ -72,6 +72,8 @@ export class VideoManager {
       
       player = new NativeVideoPlayer(videoElement);
       await player.load(videoSource.url);
+      // Always mute native video to avoid double audio; audio comes from AudioEngine
+      player.mute(true);
       
     } else if (videoSource.type === 'youtube') {
       // For YouTube, we need to replace the video element with a div
@@ -90,6 +92,8 @@ export class VideoManager {
         
         player = new YouTubePlayer(youtubeDiv.id, videoSource.url);
         await player.load(videoSource.url);
+        // Always mute YouTube video as well
+        player.mute(true);
       } else {
         throw new Error(`Container ${containerId} not found`);
       }

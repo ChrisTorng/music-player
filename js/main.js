@@ -1,12 +1,16 @@
 import { ConfigLoader } from './config/loader.js';
 import { VideoManager } from './video/manager.js';
+import { AudioEngine } from './audio/engine.js';
 class MusicPlayerApp {
     constructor() {
         this.config = null;
         this.currentTab = null;
         this.isPlaying = false;
+        this.cursorRaf = null;
         this.configLoader = new ConfigLoader();
         this.videoManager = new VideoManager();
+        this.audioEngine = new AudioEngine();
+        this.trackImageInfo = new Map();
         this.init();
     }
     async init() {
@@ -17,6 +21,7 @@ class MusicPlayerApp {
                 throw new Error('No piece specified. Please add ?piece=<folder-name> to URL');
             }
             this.config = await this.configLoader.loadPieceConfig(piece);
+            await this.audioEngine.initialize();
             this.updatePieceInfo(piece);
             this.generateTabs();
             this.setupGlobalControls();
@@ -80,8 +85,7 @@ class MusicPlayerApp {
                 this.togglePlayPause();
             });
         }
-        this.videoManager.onTimeUpdateCallback((currentTime, source) => {
-            console.log(`Time update from ${source}: ${currentTime}s`);
+        this.videoManager.onTimeUpdateCallback((_currentTime, _source) => {
         });
         this.videoManager.onPlayCallback((source) => {
             console.log(`Play from ${source}`);
@@ -96,11 +100,15 @@ class MusicPlayerApp {
         try {
             if (this.videoManager.isAnyPlaying()) {
                 this.videoManager.pauseAll();
+                this.audioEngine.pauseAll();
                 this.isPlaying = false;
             }
             else {
+                await this.audioEngine.resume();
+                await this.audioEngine.playAll();
                 await this.videoManager.playAll();
                 this.isPlaying = true;
+                this.startCursorLoop();
             }
             this.updatePlayPauseButton();
         }
@@ -136,6 +144,9 @@ class MusicPlayerApp {
         this.updateVideoSelectors();
         this.updateAudioGroups();
         this.applyDefaults();
+        this.loadSelectedGroupAudioTracks().then(() => {
+            this.applyRoutingFromSelectors();
+        }).catch(err => console.error('Audio preload failed:', err));
     }
     updateVideoSelectors() {
         if (!this.currentTab)
@@ -218,6 +229,7 @@ class MusicPlayerApp {
         audioGroupSelect.addEventListener('change', () => {
             this.updateAudioTracks();
             this.updateChannelSelectors();
+            this.loadSelectedGroupAudioTracks().then(() => this.applyRoutingFromSelectors()).catch(err => console.error(err));
         });
     }
     updateAudioTracks() {
@@ -284,11 +296,17 @@ class MusicPlayerApp {
         const waveformToggle = trackElement.querySelector('.waveform-toggle');
         const spectrogramToggle = trackElement.querySelector('.spectrogram-toggle');
         visualsContainer.innerHTML = '';
+        visualsContainer.style.position = 'relative';
         if (waveformToggle?.checked && track.images.waveform) {
             const waveformImg = document.createElement('img');
             waveformImg.src = track.images.waveform;
             waveformImg.className = 'visual-image waveform-image';
             waveformImg.alt = `Waveform for ${track.label}`;
+            waveformImg.style.display = 'block';
+            waveformImg.onload = () => {
+                const prev = this.trackImageInfo.get(track.id);
+                this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null });
+            };
             visualsContainer.appendChild(waveformImg);
         }
         if (spectrogramToggle?.checked && track.images.spectrogram) {
@@ -297,8 +315,23 @@ class MusicPlayerApp {
             spectrogramImg.className = 'visual-image spectrogram-image';
             spectrogramImg.alt = `Spectrogram for ${track.label}`;
             spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
+            spectrogramImg.style.display = 'block';
+            spectrogramImg.onload = () => {
+                const prev = this.trackImageInfo.get(track.id);
+                this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg });
+            };
             visualsContainer.appendChild(spectrogramImg);
         }
+        const cursor = document.createElement('div');
+        cursor.className = 'cursor-line';
+        cursor.style.position = 'absolute';
+        cursor.style.top = '0';
+        cursor.style.bottom = '0';
+        cursor.style.width = '2px';
+        cursor.style.left = '0';
+        cursor.style.background = 'rgba(255,0,0,0.9)';
+        cursor.style.pointerEvents = 'none';
+        visualsContainer.appendChild(cursor);
     }
     updateChannelSelectors() {
         if (!this.currentTab)
@@ -338,6 +371,75 @@ class MusicPlayerApp {
                 rightChannelSelect.appendChild(rightOption);
             }
         });
+        leftChannelSelect.addEventListener('change', () => this.applyRoutingFromSelectors());
+        rightChannelSelect.addEventListener('change', () => this.applyRoutingFromSelectors());
+    }
+    async loadSelectedGroupAudioTracks() {
+        if (!this.currentTab)
+            return;
+        const audioGroupSelect = document.getElementById('audio-group');
+        if (!audioGroupSelect)
+            return;
+        const selectedGroup = this.currentTab.audioGroups.find(g => g.id === audioGroupSelect.value);
+        if (!selectedGroup)
+            return;
+        for (const t of selectedGroup.tracks) {
+            try {
+                await this.audioEngine.loadAudioTrack(t.id, t.url);
+            }
+            catch (e) {
+                console.error(`Failed to load audio track ${t.id}`, e);
+            }
+        }
+    }
+    parseRoutingValue(value) {
+        if (!value)
+            return null;
+        const [type, rest] = value.split(':');
+        if (type === 'audio')
+            return { type: 'audio', id: rest };
+        if (type === 'video')
+            return { type: 'video', position: rest };
+        return null;
+    }
+    applyRoutingFromSelectors() {
+        const leftChannelSelect = document.getElementById('left-channel');
+        const rightChannelSelect = document.getElementById('right-channel');
+        if (!leftChannelSelect || !rightChannelSelect)
+            return;
+        const left = this.parseRoutingValue(leftChannelSelect.value);
+        const right = this.parseRoutingValue(rightChannelSelect.value);
+        this.audioEngine.setRouting({
+            left: left ? (left.type === 'audio' ? { type: 'audio', id: left.id } : { type: 'video', id: '', position: left.position }) : null,
+            right: right ? (right.type === 'audio' ? { type: 'audio', id: right.id } : { type: 'video', id: '', position: right.position }) : null,
+        });
+    }
+    startCursorLoop() {
+        if (this.cursorRaf !== null)
+            cancelAnimationFrame(this.cursorRaf);
+        const tick = () => {
+            const clock = this.audioEngine.getMasterClock();
+            document.querySelectorAll('.track-visuals').forEach((containerEl) => {
+                const container = containerEl;
+                const parent = container.closest('.audio-track');
+                const trackId = parent?.dataset.trackId;
+                if (!trackId)
+                    return;
+                const info = this.trackImageInfo.get(trackId);
+                const cursor = container.querySelector('.cursor-line');
+                if (!info || !cursor)
+                    return;
+                const refImg = info.imgEl || info.spectEl;
+                if (!refImg || refImg.naturalWidth === 0)
+                    return;
+                const scale = refImg.clientWidth / refImg.naturalWidth;
+                const pxPerSecDisplayed = info.pxPerSecond * scale;
+                const x = Math.max(0, clock.currentTime * pxPerSecDisplayed);
+                cursor.style.left = `${x}px`;
+            });
+            this.cursorRaf = requestAnimationFrame(tick);
+        };
+        this.cursorRaf = requestAnimationFrame(tick);
     }
     applyDefaults() {
         if (!this.currentTab)
@@ -373,6 +475,7 @@ class MusicPlayerApp {
                     : `video:${defaults.routing.right.position}`;
                 rightChannelSelect.value = rightValue;
             }
+            this.applyRoutingFromSelectors();
         }, 100);
     }
 }

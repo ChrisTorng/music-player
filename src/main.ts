@@ -1,6 +1,7 @@
 import { ConfigLoader } from './config/loader.js';
 import { Config, Tab } from './config/types.js';
 import { VideoManager } from './video/manager.js';
+import { AudioEngine } from './audio/engine.js';
 
 class MusicPlayerApp {
   private config: Config | null = null;
@@ -8,10 +9,15 @@ class MusicPlayerApp {
   private configLoader: ConfigLoader;
   private videoManager: VideoManager;
   private isPlaying: boolean = false;
+  private audioEngine: AudioEngine;
+  private cursorRaf: number | null = null;
+  private trackImageInfo: Map<string, { pxPerSecond: number; imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null }>;
 
   constructor() {
     this.configLoader = new ConfigLoader();
     this.videoManager = new VideoManager();
+    this.audioEngine = new AudioEngine();
+    this.trackImageInfo = new Map();
     this.init();
   }
 
@@ -28,6 +34,9 @@ class MusicPlayerApp {
       
       // Load config
       this.config = await this.configLoader.loadPieceConfig(piece);
+
+      // Prepare audio engine
+      await this.audioEngine.initialize();
       
       // Update UI
       this.updatePieceInfo(piece);
@@ -109,9 +118,8 @@ class MusicPlayerApp {
     }
 
     // Set up video manager callbacks
-    this.videoManager.onTimeUpdateCallback((currentTime, source) => {
-      // TODO: Update visual cursors and sync other players
-      console.log(`Time update from ${source}: ${currentTime}s`);
+    this.videoManager.onTimeUpdateCallback((_currentTime, _source) => {
+      // Cursor follows audio master clock; video updates are secondary.
     });
 
     this.videoManager.onPlayCallback((source) => {
@@ -128,11 +136,17 @@ class MusicPlayerApp {
   private async togglePlayPause(): Promise<void> {
     try {
       if (this.videoManager.isAnyPlaying()) {
+        // Pause both video and audio
         this.videoManager.pauseAll();
+        this.audioEngine.pauseAll();
         this.isPlaying = false;
       } else {
+        // Start audio first (master clock), then video
+        await this.audioEngine.resume();
+        await this.audioEngine.playAll();
         await this.videoManager.playAll();
         this.isPlaying = true;
+        this.startCursorLoop();
       }
       this.updatePlayPauseButton();
     } catch (error) {
@@ -175,6 +189,11 @@ class MusicPlayerApp {
     this.updateVideoSelectors();
     this.updateAudioGroups();
     this.applyDefaults();
+
+    // Load audio for default group and apply routing
+    this.loadSelectedGroupAudioTracks().then(() => {
+      this.applyRoutingFromSelectors();
+    }).catch(err => console.error('Audio preload failed:', err));
   }
 
   private updateVideoSelectors(): void {
@@ -282,6 +301,7 @@ class MusicPlayerApp {
     audioGroupSelect.addEventListener('change', () => {
       this.updateAudioTracks();
       this.updateChannelSelectors();
+      this.loadSelectedGroupAudioTracks().then(() => this.applyRoutingFromSelectors()).catch(err => console.error(err));
     });
   }
 
@@ -367,6 +387,7 @@ class MusicPlayerApp {
     
     // Clear existing visuals
     visualsContainer.innerHTML = '';
+    (visualsContainer as HTMLElement).style.position = 'relative';
     
     // Add waveform if enabled and available
     if (waveformToggle?.checked && track.images.waveform) {
@@ -374,6 +395,11 @@ class MusicPlayerApp {
       waveformImg.src = track.images.waveform;
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
+      waveformImg.style.display = 'block';
+      waveformImg.onload = () => {
+        const prev = this.trackImageInfo.get(track.id);
+        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null });
+      };
       visualsContainer.appendChild(waveformImg);
     }
     
@@ -384,8 +410,25 @@ class MusicPlayerApp {
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
       spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
+      spectrogramImg.style.display = 'block';
+      spectrogramImg.onload = () => {
+        const prev = this.trackImageInfo.get(track.id);
+        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg });
+      };
       visualsContainer.appendChild(spectrogramImg);
     }
+
+    // Add a cursor overlay
+    const cursor = document.createElement('div');
+    cursor.className = 'cursor-line';
+    cursor.style.position = 'absolute';
+    cursor.style.top = '0';
+    cursor.style.bottom = '0';
+    cursor.style.width = '2px';
+    cursor.style.left = '0';
+    cursor.style.background = 'rgba(255,0,0,0.9)';
+    cursor.style.pointerEvents = 'none';
+    visualsContainer.appendChild(cursor);
   }
 
   private updateChannelSelectors(): void {
@@ -434,6 +477,72 @@ class MusicPlayerApp {
         rightChannelSelect.appendChild(rightOption);
       }
     });
+
+    // Apply routing when user changes selection
+    leftChannelSelect.addEventListener('change', () => this.applyRoutingFromSelectors());
+    rightChannelSelect.addEventListener('change', () => this.applyRoutingFromSelectors());
+  }
+
+  private async loadSelectedGroupAudioTracks(): Promise<void> {
+    if (!this.currentTab) return;
+    const audioGroupSelect = document.getElementById('audio-group') as HTMLSelectElement;
+    if (!audioGroupSelect) return;
+    const selectedGroup = this.currentTab.audioGroups.find(g => g.id === audioGroupSelect.value);
+    if (!selectedGroup) return;
+
+    for (const t of selectedGroup.tracks) {
+      try {
+        await this.audioEngine.loadAudioTrack(t.id, t.url);
+      } catch (e) {
+        console.error(`Failed to load audio track ${t.id}`, e);
+      }
+    }
+  }
+
+  private parseRoutingValue(value: string): { type: 'audio' | 'video'; id?: string; position?: 'top' | 'bottom' } | null {
+    if (!value) return null;
+    const [type, rest] = value.split(':');
+    if (type === 'audio') return { type: 'audio', id: rest };
+    if (type === 'video') return { type: 'video', position: rest as 'top' | 'bottom' };
+    return null;
+  }
+
+  private applyRoutingFromSelectors(): void {
+    const leftChannelSelect = document.getElementById('left-channel') as HTMLSelectElement;
+    const rightChannelSelect = document.getElementById('right-channel') as HTMLSelectElement;
+    if (!leftChannelSelect || !rightChannelSelect) return;
+
+    const left = this.parseRoutingValue(leftChannelSelect.value);
+    const right = this.parseRoutingValue(rightChannelSelect.value);
+
+    this.audioEngine.setRouting({
+      left: left ? (left.type === 'audio' ? { type: 'audio', id: left.id! } : { type: 'video', id: '', position: left.position }) : null,
+      right: right ? (right.type === 'audio' ? { type: 'audio', id: right.id! } : { type: 'video', id: '', position: right.position }) : null,
+    });
+  }
+
+  private startCursorLoop(): void {
+    if (this.cursorRaf !== null) cancelAnimationFrame(this.cursorRaf);
+    const tick = () => {
+      const clock = this.audioEngine.getMasterClock();
+      document.querySelectorAll('.track-visuals').forEach((containerEl) => {
+        const container = containerEl as HTMLElement;
+        const parent = container.closest('.audio-track') as HTMLElement | null;
+        const trackId = parent?.dataset.trackId;
+        if (!trackId) return;
+        const info = this.trackImageInfo.get(trackId);
+        const cursor = container.querySelector('.cursor-line') as HTMLDivElement | null;
+        if (!info || !cursor) return;
+        const refImg = info.imgEl || info.spectEl;
+        if (!refImg || refImg.naturalWidth === 0) return;
+        const scale = refImg.clientWidth / refImg.naturalWidth;
+        const pxPerSecDisplayed = info.pxPerSecond * scale;
+        const x = Math.max(0, clock.currentTime * pxPerSecDisplayed);
+        cursor.style.left = `${x}px`;
+      });
+      this.cursorRaf = requestAnimationFrame(tick);
+    };
+    this.cursorRaf = requestAnimationFrame(tick);
   }
 
   private applyDefaults(): void {
@@ -481,6 +590,7 @@ class MusicPlayerApp {
           : `video:${defaults.routing.right.position}`;
         rightChannelSelect.value = rightValue;
       }
+      this.applyRoutingFromSelectors();
     }, 100);
   }
 }

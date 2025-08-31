@@ -12,6 +12,8 @@ export class AudioEngine {
             currentTime: 0,
             isPlaying: false
         };
+        this.playStartContextTime = null;
+        this.playStartOffset = 0;
     }
     async initialize() {
         if (this.audioContext)
@@ -104,17 +106,61 @@ export class AudioEngine {
         if (!this.audioContext || !this.leftChannelGain || !this.rightChannelGain) {
             throw new Error('AudioEngine not initialized');
         }
-        this.leftChannelGain.disconnect();
-        this.rightChannelGain.disconnect();
+        const wasPlaying = this.masterClock.isPlaying;
+        const currentPos = this.getMasterClock().currentTime;
+        try {
+            this.leftChannelGain.disconnect();
+        }
+        catch { }
+        try {
+            this.rightChannelGain.disconnect();
+        }
+        catch { }
+        this.audioTracks.forEach((t) => {
+            try {
+                t.gainNode.disconnect();
+            }
+            catch { }
+        });
+        this.videoSources.forEach((vs) => {
+            try {
+                vs.mediaElementSource?.disconnect();
+            }
+            catch { }
+            try {
+                vs.gainNode.disconnect();
+            }
+            catch { }
+        });
         this.leftChannelGain.connect(this.channelMerger, 0, 0);
         this.rightChannelGain.connect(this.channelMerger, 0, 1);
-        if (routing.left) {
+        if (routing.left)
             this.connectSourceToChannel(routing.left, 'left');
-        }
-        if (routing.right) {
+        if (routing.right)
             this.connectSourceToChannel(routing.right, 'right');
-        }
         this.currentRouting = routing;
+        const selectedIds = new Set();
+        if (routing.left?.type === 'audio' && routing.left.id)
+            selectedIds.add(routing.left.id);
+        if (routing.right?.type === 'audio' && routing.right.id)
+            selectedIds.add(routing.right.id);
+        this.audioTracks.forEach((t) => {
+            if (!selectedIds.has(t.id)) {
+                this.stopAudioTrack(t.id);
+            }
+        });
+        if (wasPlaying) {
+            this.masterClock.currentTime = currentPos;
+            this.playStartContextTime = this.audioContext.currentTime;
+            this.playStartOffset = currentPos;
+            if (routing.left?.type === 'audio' && routing.left.id) {
+                this.playAudioTrack(routing.left.id);
+            }
+            if (routing.right?.type === 'audio' && routing.right.id && routing.right.id !== routing.left?.id) {
+                this.playAudioTrack(routing.right.id);
+            }
+            this.masterClock.isPlaying = true;
+        }
     }
     connectSourceToChannel(source, channel) {
         const gainNode = channel === 'left' ? this.leftChannelGain : this.rightChannelGain;
@@ -146,12 +192,19 @@ export class AudioEngine {
             promises.push(this.playAudioTrack(this.currentRouting.right.id));
         }
         await Promise.all(promises);
+        this.playStartContextTime = this.audioContext.currentTime;
+        this.playStartOffset = this.masterClock.currentTime;
         this.masterClock.isPlaying = true;
     }
     pauseAll() {
         this.audioTracks.forEach((track) => {
             this.stopAudioTrack(track.id);
         });
+        if (this.audioContext && this.playStartContextTime !== null) {
+            const elapsed = this.audioContext.currentTime - this.playStartContextTime;
+            this.masterClock.currentTime = this.playStartOffset + Math.max(0, elapsed);
+        }
+        this.playStartContextTime = null;
         this.masterClock.isPlaying = false;
     }
     seekAll(time) {
@@ -209,6 +262,11 @@ export class AudioEngine {
         }
     }
     getMasterClock() {
+        if (this.audioContext && this.masterClock.isPlaying && this.playStartContextTime !== null) {
+            const elapsed = this.audioContext.currentTime - this.playStartContextTime;
+            const currentTime = this.playStartOffset + Math.max(0, elapsed);
+            return { currentTime, isPlaying: true };
+        }
         return { ...this.masterClock };
     }
     updateMasterClock(currentTime) {
