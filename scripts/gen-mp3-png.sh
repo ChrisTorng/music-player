@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate missing PNGs for MP3s under any */audio/ directory:
-# - Waveform: peak-normalized to 0 dBFS, 4000x200, white on transparent
+# Generate missing PNGs for MP3s under any directory:
+# - Waveform: peak-normalized to 0 dBFS, 4000x100, white on transparent
 #   Output name: <basename>.waveform.png
-# - Spectrogram: magma colormap, 4000x200, transparent background
+# - Spectrogram: magma colormap, 4000x150, transparent background
 #   Output name: <basename>.spectrogram.png
 #
 # Options:
@@ -39,24 +39,28 @@ make_waveform() {
   fi
   echo "[waveform] max_volume=${maxv:-unknown} dB, gain=${gain_db} dB -> $out_png"
   ffmpeg -y -i "$in_mp3" \
-    -filter_complex "aformat=channel_layouts=mono,volume=${gain_db}dB,showwavespic=s=4000x200:colors=white,format=rgba,colorkey=black:0.02:0.0" \
+    -filter_complex "aformat=channel_layouts=mono,volume=${gain_db}dB,showwavespic=s=4000x100:colors=white,format=rgba,colorkey=black:0.02:0.0" \
     -frames:v 1 "$out_png" < /dev/null
 }
 
 make_spectrogram() {
   local in_mp3="$1" out_png="$2"
-  echo "[spectrogram] magma alpha 4000x200 -> $out_png"
+  # Previous version used colorkey to make near-black transparent, which caused the upper
+  # frequency band (often very low energy in piano material) to become fully transparent
+  # leaving apparent "empty" space. We remove colorkey so the full 200px height is visually
+  # occupied. Slight brightness lift helps low-energy bands show faint color instead of pure black.
+  echo "[spectrogram] magma 4000x200 (no colorkey) -> $out_png"
   ffmpeg -y -i "$in_mp3" \
-    -lavfi "aformat=channel_layouts=mono,showspectrumpic=s=4000x200:legend=disabled:scale=log:color=magma,eq=contrast=1.6:saturation=1.25,format=rgba,colorkey=black:0.08:0.0" \
+    -lavfi "aformat=channel_layouts=mono,showspectrumpic=s=4000x200:legend=disabled:scale=log:color=magma,eq=contrast=1.55:brightness=0.02:saturation=1.25,format=rgba" \
     "$out_png" < /dev/null
 }
 
 shopt -s nullglob
 declare -a files
-while IFS= read -r -d '' f; do files+=("$f"); done < <(find "$root" -type f -path '*/audio/*.mp3' -print0)
+while IFS= read -r -d '' f; do files+=("$f"); done < <(find "$root" -type f -path '*.mp3' -print0)
 
 if ((${#files[@]}==0)); then
-  echo "[info] No MP3 files found under $root matching */audio/*.mp3"
+  echo "[info] No MP3 files found under $root matching *.mp3"
   exit 0
 fi
 
