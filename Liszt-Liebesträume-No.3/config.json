@@ -244,10 +244,10 @@
         },
         {
           "id": "church_v1",
-          // "type": "youtube",
-          // "url": "https://www.youtube.com/watch?v=oT6bomn_kns",
-          "type": "mp4",
-          "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
+          "type": "youtube",
+          "url": "https://www.youtube.com/watch?v=oT6bomn_kns",
+          // "type": "mp4",
+          // "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
           "label": "Church Ableton Live"
         }
       ],
