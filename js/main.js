@@ -253,6 +253,7 @@ class MusicPlayerApp {
         selectedGroup.tracks.forEach(track => {
             const trackElement = this.createTrackElement(track);
             audioTracksContainer.appendChild(trackElement);
+            this.updateTrackVisuals(track.id);
         });
     }
     createTrackElement(track) {
@@ -285,7 +286,6 @@ class MusicPlayerApp {
         if (spectrogramToggle) {
             spectrogramToggle.addEventListener('change', () => this.updateTrackVisuals(track.id));
         }
-        this.updateTrackVisuals(track.id);
         return trackDiv;
     }
     updateTrackVisuals(trackId) {

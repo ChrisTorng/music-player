@@ -330,6 +330,8 @@ class MusicPlayerApp {
     selectedGroup.tracks.forEach(track => {
       const trackElement = this.createTrackElement(track);
       audioTracksContainer.appendChild(trackElement);
+      // Ensure visuals render after element is in DOM
+      this.updateTrackVisuals(track.id);
     });
   }
 
@@ -369,8 +371,7 @@ class MusicPlayerApp {
       spectrogramToggle.addEventListener('change', () => this.updateTrackVisuals(track.id));
     }
     
-    // Load initial visuals
-    this.updateTrackVisuals(track.id);
+    // Initial visuals are rendered after append in updateAudioTracks()
     
     return trackDiv;
   }
