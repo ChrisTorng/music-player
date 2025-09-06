@@ -396,6 +396,9 @@ class MusicPlayerApp {
     // Clear existing visuals
     visualsContainer.innerHTML = '';
     (visualsContainer as HTMLElement).style.position = 'relative';
+    // Allow horizontal scrolling to accommodate fixed 4000px-wide images
+    (visualsContainer as HTMLElement).style.overflowX = 'auto';
+    (visualsContainer as HTMLElement).style.overflowY = 'hidden';
     
     // Add waveform if enabled and available
     if (waveformToggle?.checked && track.images.waveform) {
@@ -403,7 +406,10 @@ class MusicPlayerApp {
       waveformImg.src = track.images.waveform;
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
+      // Fixed display width 4000px, dynamic height
       waveformImg.style.display = 'block';
+      waveformImg.style.width = '4000px';
+      waveformImg.style.height = 'auto';
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null });
@@ -418,7 +424,10 @@ class MusicPlayerApp {
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
       spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
+      // Fixed display width 4000px, dynamic height
       spectrogramImg.style.display = 'block';
+      spectrogramImg.style.width = '4000px';
+      spectrogramImg.style.height = 'auto';
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg });
