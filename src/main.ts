@@ -433,6 +433,10 @@ class MusicPlayerApp {
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
+        // Recompute position after image metrics are available
+        const clock = this.audioEngine.getMasterClock();
+        const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+        this.positionWrapper(container, trackWrapper, t, track.images.pxPerSecond);
       };
       trackWrapper.appendChild(waveformImg);
     }
@@ -451,6 +455,10 @@ class MusicPlayerApp {
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
+        // Recompute position after image metrics are available
+        const clock = this.audioEngine.getMasterClock();
+        const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+        this.positionWrapper(container, trackWrapper, t, track.images.pxPerSecond);
       };
       trackWrapper.appendChild(spectrogramImg);
     }
@@ -600,18 +608,25 @@ class MusicPlayerApp {
 
   // Compute and apply wrapper translation for a given time
   private positionWrapper(container: HTMLElement, wrapper: HTMLElement, timeSec: number, pxPerSecond: number): void {
-    // Determine the track pixel width from an available reference image
+    // Determine the track pixel width in CSS pixels (displayed width)
     const refImg = (wrapper.querySelector('img.visual-image') as HTMLImageElement) || null;
-    const trackPxWidth = refImg?.naturalWidth || (refImg && parseInt(refImg.style.width)) || refImg?.width || 0;
+    const styleWidth = refImg ? parseInt(refImg.style.width || '0', 10) : 0;
+    const trackWidth = refImg ? (refImg.clientWidth || styleWidth || refImg.width || refImg.naturalWidth || 0) : Math.max(wrapper.scrollWidth, wrapper.clientWidth, 0);
+    if (!trackWidth) return;
 
-    // If width unknown, fall back to wrapper scrollWidth (may be unreliable for abs-pos)
-    const trackWidth = trackPxWidth > 0 ? trackPxWidth : Math.max(wrapper.scrollWidth, wrapper.clientWidth, 0);
-    if (!trackWidth || !pxPerSecond) return;
-
-    // Clamp time to the image duration so we never scroll into empty space
-    const maxTime = trackWidth / pxPerSecond;
-    const clampedTime = Math.max(0, Math.min(timeSec, maxTime));
-    const x = clampedTime * pxPerSecond; // pixels from left edge
+    // Prefer master audio duration (source of truth); fallback to pxPerSecond mapping.
+    const audioDuration = this.audioEngine.getMasterAudioDuration();
+    let x: number;
+    if (audioDuration && audioDuration > 0) {
+      const clamped = Math.max(0, Math.min(timeSec, audioDuration));
+      x = (clamped / audioDuration) * trackWidth;
+    } else if (pxPerSecond && isFinite(pxPerSecond)) {
+      const maxTime = trackWidth / pxPerSecond;
+      const clamped = Math.max(0, Math.min(timeSec, maxTime));
+      x = clamped * pxPerSecond;
+    } else {
+      return; // insufficient info to position
+    }
 
     const viewportWidth = container.clientWidth;
     const centerX = viewportWidth / 2;

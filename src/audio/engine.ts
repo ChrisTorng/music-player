@@ -374,6 +374,24 @@ export class AudioEngine {
     });
   }
 
+  // Returns the master audio duration in seconds based on currently routed audio sources.
+  // If both left and right route audio, returns the max of their durations.
+  // Returns null if no routed audio with a known duration is available.
+  getMasterAudioDuration(): number | null {
+    const durations: number[] = [];
+    const collect = (src: AudioSource | null) => {
+      if (src?.type === 'audio' && src.id) {
+        const t = this.audioTracks.get(src.id);
+        const d = t?.buffer?.duration;
+        if (typeof d === 'number' && isFinite(d)) durations.push(d);
+      }
+    };
+    collect(this.currentRouting.left);
+    collect(this.currentRouting.right);
+    if (durations.length === 0) return null;
+    return Math.max(...durations);
+  }
+
   isInitialized(): boolean {
     return this.audioContext !== null;
   }
