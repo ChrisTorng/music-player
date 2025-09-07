@@ -12,6 +12,10 @@
 - `media/home`, `media/church`, `media/home-midi`: Each contains `audio/` and `video/` for takes and renders.
 - Do not commit Windows alternate streams like `*:Zone.Identifier` — delete them before pushing.
 
+## Visual Asset Dimensions
+- Waveform image export size: 4000×100 px.
+- Spectrogram image export size: 4000×200 px.
+
 ## Build, Test, and Development Commands
 - No build system; this repo tracks media assets.
 - Validate media quickly:

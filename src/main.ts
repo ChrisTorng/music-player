@@ -11,7 +11,7 @@ class MusicPlayerApp {
   private isPlaying: boolean = false;
   private audioEngine: AudioEngine;
   private cursorRaf: number | null = null;
-  private trackImageInfo: Map<string, { pxPerSecond: number; imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null }>;
+  private trackImageInfo: Map<string, { pxPerSecond: number; imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null; wrapperEl: HTMLDivElement | null }>;
   private pieceName: string = '';
 
   constructor() {
@@ -395,10 +395,22 @@ class MusicPlayerApp {
     
     // Clear existing visuals
     visualsContainer.innerHTML = '';
-    (visualsContainer as HTMLElement).style.position = 'relative';
-    // Allow horizontal scrolling to accommodate fixed 4000px-wide images
-    (visualsContainer as HTMLElement).style.overflowX = 'auto';
-    (visualsContainer as HTMLElement).style.overflowY = 'hidden';
+    const container = visualsContainer as HTMLElement;
+    container.style.position = 'relative';
+    // Fixed viewport: follow screen width; only show visible region
+    container.style.width = '100%';
+    container.style.overflowX = 'hidden';
+    container.style.overflowY = 'hidden';
+
+    // Create a scrolling track wrapper that will be translated during playback.
+    // Use absolute positioning so its large width does not affect layout sizing.
+    const trackWrapper = document.createElement('div');
+    trackWrapper.className = 'visuals-track';
+    trackWrapper.style.position = 'absolute';
+    trackWrapper.style.left = '0';
+    trackWrapper.style.top = '0';
+    trackWrapper.style.transform = 'translateX(0px)';
+    trackWrapper.style.willChange = 'transform';
     
     // Add waveform if enabled and available
     if (waveformToggle?.checked && track.images.waveform) {
@@ -406,15 +418,15 @@ class MusicPlayerApp {
       waveformImg.src = track.images.waveform;
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
-      // Fixed display width 4000px, dynamic height
+      // Fixed display size 4000×100
       waveformImg.style.display = 'block';
       waveformImg.style.width = '4000px';
-      waveformImg.style.height = 'auto';
+      waveformImg.style.height = '100px';
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
-        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null });
+        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
       };
-      visualsContainer.appendChild(waveformImg);
+      trackWrapper.appendChild(waveformImg);
     }
     
     // Add spectrogram if enabled and available
@@ -424,28 +436,45 @@ class MusicPlayerApp {
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
       spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
-      // Fixed display width 4000px, dynamic height
+      // Fixed display size 4000×200
       spectrogramImg.style.display = 'block';
       spectrogramImg.style.width = '4000px';
-      spectrogramImg.style.height = 'auto';
+      spectrogramImg.style.height = '200px';
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
-        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg });
+        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
       };
-      visualsContainer.appendChild(spectrogramImg);
+      trackWrapper.appendChild(spectrogramImg);
     }
 
-    // Add a cursor overlay
+    // Compute and set container height based on enabled visuals
+    const hasWave = !!(waveformToggle?.checked && track.images.waveform);
+    const hasSpect = !!(spectrogramToggle?.checked && track.images.spectrogram);
+    const marginBetween = hasWave && hasSpect ? 5 : 0;
+    const totalHeight = (hasWave ? 100 : 0) + (hasSpect ? 200 : 0) + marginBetween;
+    if (totalHeight > 0) container.style.height = `${totalHeight}px`;
+    else container.style.height = '0px';
+
+    // Append wrapper to the container (after height is set)
+    container.appendChild(trackWrapper);
+
+    // Add a centered cursor overlay (playback progress line)
     const cursor = document.createElement('div');
     cursor.className = 'cursor-line';
     cursor.style.position = 'absolute';
     cursor.style.top = '0';
     cursor.style.bottom = '0';
     cursor.style.width = '2px';
-    cursor.style.left = '0';
+    cursor.style.left = '50%';
     cursor.style.background = 'rgba(255,0,0,0.9)';
     cursor.style.pointerEvents = 'none';
-    visualsContainer.appendChild(cursor);
+    container.appendChild(cursor);
+
+    // Set initial alignment: left edge under the centered cursor
+    {
+      const center = container.clientWidth / 2;
+      trackWrapper.style.transform = `translateX(${center}px)`;
+    }
   }
 
   private updateChannelSelectors(): void {
@@ -548,14 +577,29 @@ class MusicPlayerApp {
         const trackId = parent?.dataset.trackId;
         if (!trackId) return;
         const info = this.trackImageInfo.get(trackId);
-        const cursor = container.querySelector('.cursor-line') as HTMLDivElement | null;
-        if (!info || !cursor) return;
+        if (!info) return;
+        const wrapper = info.wrapperEl || (container.querySelector('.visuals-track') as HTMLDivElement | null);
         const refImg = info.imgEl || info.spectEl;
-        if (!refImg || refImg.naturalWidth === 0) return;
-        const scale = refImg.clientWidth / refImg.naturalWidth;
-        const pxPerSecDisplayed = info.pxPerSecond * scale;
-        const x = Math.max(0, clock.currentTime * pxPerSecDisplayed);
-        cursor.style.left = `${x}px`;
+        if (!wrapper || !refImg) return;
+
+        // Keep cursor centered; move the wrapper instead
+        const cursor = container.querySelector('.cursor-line') as HTMLDivElement | null;
+        if (cursor) cursor.style.left = '50%';
+
+        // Pixels in image space per second
+        const pxPerSec = info.pxPerSecond;
+        const x = Math.max(0, clock.currentTime * pxPerSec);
+
+        const viewportWidth = container.clientWidth;
+        const trackWidth = Math.max(wrapper.scrollWidth, wrapper.clientWidth);
+        const centerX = viewportWidth / 2;
+        // Desired translation to align current time under the center cursor
+        let tx = centerX - x;
+        // Clamp so we don't scroll past the ends (left edge under center at t=0; right edge under center at end)
+        const minTx = centerX - trackWidth; // right edge aligned to center
+        const maxTx = centerX;              // left edge aligned to center
+        tx = Math.max(minTx, Math.min(maxTx, tx));
+        wrapper.style.transform = `translateX(${tx}px)`;
       });
       this.cursorRaf = requestAnimationFrame(tick);
     };
