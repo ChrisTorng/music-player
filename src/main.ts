@@ -138,6 +138,13 @@ class MusicPlayerApp {
       console.log(`Pause from ${source}`);
       this.updatePlayPauseButton();
     });
+
+    // Keep visuals aligned on window resize
+    window.addEventListener('resize', () => {
+      const clock = this.audioEngine.getMasterClock();
+      const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+      this.updateAllVisualsPosition(t);
+    });
   }
 
   private async togglePlayPause(): Promise<void> {
@@ -399,6 +406,7 @@ class MusicPlayerApp {
     container.style.position = 'relative';
     // Fixed viewport: follow screen width; only show visible region
     container.style.width = '100%';
+    container.style.minHeight = '0';
     container.style.overflowX = 'hidden';
     container.style.overflowY = 'hidden';
 
@@ -471,10 +479,8 @@ class MusicPlayerApp {
     container.appendChild(cursor);
 
     // Set initial alignment: left edge under the centered cursor
-    {
-      const center = container.clientWidth / 2;
-      trackWrapper.style.transform = `translateX(${center}px)`;
-    }
+    // Initial alignment: left edge under center before playback
+    this.positionWrapper(container, trackWrapper, 0, this.trackImageInfo.get(trackId)?.pxPerSecond || track.images.pxPerSecond);
   }
 
   private updateChannelSelectors(): void {
@@ -582,28 +588,42 @@ class MusicPlayerApp {
         const refImg = info.imgEl || info.spectEl;
         if (!wrapper || !refImg) return;
 
-        // Keep cursor centered; move the wrapper instead
+        // Center cursor; move the wrapper according to current time
         const cursor = container.querySelector('.cursor-line') as HTMLDivElement | null;
         if (cursor) cursor.style.left = '50%';
-
-        // Pixels in image space per second
-        const pxPerSec = info.pxPerSecond;
-        const x = Math.max(0, clock.currentTime * pxPerSec);
-
-        const viewportWidth = container.clientWidth;
-        const trackWidth = Math.max(wrapper.scrollWidth, wrapper.clientWidth);
-        const centerX = viewportWidth / 2;
-        // Desired translation to align current time under the center cursor
-        let tx = centerX - x;
-        // Clamp so we don't scroll past the ends (left edge under center at t=0; right edge under center at end)
-        const minTx = centerX - trackWidth; // right edge aligned to center
-        const maxTx = centerX;              // left edge aligned to center
-        tx = Math.max(minTx, Math.min(maxTx, tx));
-        wrapper.style.transform = `translateX(${tx}px)`;
+        this.positionWrapper(container, wrapper, clock.currentTime, info.pxPerSecond);
       });
       this.cursorRaf = requestAnimationFrame(tick);
     };
     this.cursorRaf = requestAnimationFrame(tick);
+  }
+
+  // Compute and apply wrapper translation for a given time
+  private positionWrapper(container: HTMLElement, wrapper: HTMLElement, timeSec: number, pxPerSecond: number): void {
+    const x = Math.max(0, timeSec * pxPerSecond);
+    const viewportWidth = container.clientWidth;
+    const trackWidth = Math.max(wrapper.scrollWidth, wrapper.clientWidth);
+    const centerX = viewportWidth / 2;
+    let tx = centerX - x;
+    const minTx = centerX - trackWidth; // right edge aligned to center at end
+    const maxTx = centerX;              // left edge aligned to center at start
+    tx = Math.max(minTx, Math.min(maxTx, tx));
+    wrapper.style.transform = `translateX(${tx}px)`;
+  }
+
+  // Update all visible wrappers to reflect a given time
+  private updateAllVisualsPosition(timeSec: number): void {
+    document.querySelectorAll('.track-visuals').forEach((containerEl) => {
+      const container = containerEl as HTMLElement;
+      const wrapper = container.querySelector('.visuals-track') as HTMLDivElement | null;
+      if (!wrapper) return;
+      const parent = container.closest('.audio-track') as HTMLElement | null;
+      const trackId = parent?.dataset.trackId;
+      if (!trackId) return;
+      const info = this.trackImageInfo.get(trackId);
+      const pxPerSecond = info?.pxPerSecond || 100;
+      this.positionWrapper(container, wrapper, timeSec, pxPerSecond);
+    });
   }
 
   private applyDefaults(): void {
