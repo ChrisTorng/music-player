@@ -600,13 +600,25 @@ class MusicPlayerApp {
 
   // Compute and apply wrapper translation for a given time
   private positionWrapper(container: HTMLElement, wrapper: HTMLElement, timeSec: number, pxPerSecond: number): void {
-    const x = Math.max(0, timeSec * pxPerSecond);
+    // Determine the track pixel width from an available reference image
+    const refImg = (wrapper.querySelector('img.visual-image') as HTMLImageElement) || null;
+    const trackPxWidth = refImg?.naturalWidth || (refImg && parseInt(refImg.style.width)) || refImg?.width || 0;
+
+    // If width unknown, fall back to wrapper scrollWidth (may be unreliable for abs-pos)
+    const trackWidth = trackPxWidth > 0 ? trackPxWidth : Math.max(wrapper.scrollWidth, wrapper.clientWidth, 0);
+    if (!trackWidth || !pxPerSecond) return;
+
+    // Clamp time to the image duration so we never scroll into empty space
+    const maxTime = trackWidth / pxPerSecond;
+    const clampedTime = Math.max(0, Math.min(timeSec, maxTime));
+    const x = clampedTime * pxPerSecond; // pixels from left edge
+
     const viewportWidth = container.clientWidth;
-    const trackWidth = Math.max(wrapper.scrollWidth, wrapper.clientWidth);
     const centerX = viewportWidth / 2;
     let tx = centerX - x;
-    const minTx = centerX - trackWidth; // right edge aligned to center at end
-    const maxTx = centerX;              // left edge aligned to center at start
+    // Clamp translation: start -> left edge under center; end -> right edge under center
+    const minTx = centerX - trackWidth; // at end
+    const maxTx = centerX;              // at start
     tx = Math.max(minTx, Math.min(maxTx, tx));
     wrapper.style.transform = `translateX(${tx}px)`;
   }
