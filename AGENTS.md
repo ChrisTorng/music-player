@@ -13,17 +13,17 @@
 - Do not commit Windows alternate streams like `*:Zone.Identifier` — delete them before pushing.
 
 ## Visual Asset Dimensions
-- Waveform image export size: 4000×100 px.
-- Spectrogram image export size: 4000×200 px.
+- Dynamic rendering (default):
+  - Waveform display size: 4000×50 px (black background, white waveform)
+  - Spectrogram display size: 4000×200 px (magma-like colormap, low at bottom)
 
 ## Visual Timing Mapping
 - Visual scroll is based solely on master audio duration vs. image display width.
 - If master audio duration cannot be determined from routed audio, playback is disabled until a valid audio source is selected/loaded.
 
 ## Image Path Derivation
-- Do not specify waveform/spectrogram paths in config.json.
-- scripts/gen-mp3-png.sh generates images next to each mp3; the app derives paths automatically:
-  - `foo.mp3` → `foo.waveform.png` and `foo.spectrogram.png` (same directory).
+- The app now renders visuals dynamically in-browser and does not read PNGs for waveform/spectrogram.
+- The script `scripts/gen-mp3-png.sh` remains available for optional offline generation.
 
 ## Build, Test, and Development Commands
 - No build system; this repo tracks media assets.

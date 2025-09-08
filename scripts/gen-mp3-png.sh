@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Generate missing PNGs for MP3s under any directory:
-# - Waveform: peak-normalized to 0 dBFS, 4000x100, white on transparent
+# - Waveform: peak-normalized to 0 dBFS, 4000x50, white on black
 #   Output name: <basename>.waveform.png
-# - Spectrogram: magma colormap, 4000x200, opaque background
+# - Spectrogram: magma colormap, 4000x100, opaque background
 #   Output name: <basename>.spectrogram.png
 #
 # Options:
@@ -39,7 +39,7 @@ make_waveform() {
   fi
   echo "[waveform] max_volume=${maxv:-unknown} dB, gain=${gain_db} dB -> $out_png"
   ffmpeg -y -i "$in_mp3" \
-    -filter_complex "aformat=channel_layouts=mono,volume=${gain_db}dB,showwavespic=s=4000x100:colors=white,format=rgba,colorkey=black:0.02:0.0" \
+    -filter_complex "aformat=channel_layouts=mono,volume=${gain_db}dB,showwavespic=s=4000x50:colors=white,format=rgba,drawbox=color=black@1.0:t=fill" \
     -frames:v 1 "$out_png" < /dev/null
 }
 

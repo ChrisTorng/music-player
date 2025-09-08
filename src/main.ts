@@ -444,33 +444,27 @@ class MusicPlayerApp {
     trackWrapper.style.transform = 'translateX(0px)';
     trackWrapper.style.willChange = 'transform';
     
-    // Helper to derive image URLs from MP3 URL
-    const derivePng = (mp3: string, kind: 'waveform' | 'spectrogram'): string => {
-      if (mp3.toLowerCase().endsWith('.mp3')) return mp3.replace(/\.mp3$/i, kind === 'waveform' ? '.waveform.png' : '.spectrogram.png');
-      return `${mp3}.${kind}.png`;
+    // Prepare decoded buffer once for dynamic rendering
+    let bufferPromise: Promise<AudioBuffer> | null = null;
+    const getBuf = () => {
+      if (!bufferPromise) bufferPromise = this.ensureTrackBuffer(track.id, track.url);
+      return bufferPromise;
     };
 
     // Add waveform if enabled
     if (waveformToggle?.checked) {
       const waveformImg = document.createElement('img');
-      waveformImg.src = derivePng(track.url, 'waveform');
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
-      // Fixed display size 4000×100
+      // Fixed display size 4000×50
       waveformImg.style.display = 'block';
       waveformImg.style.width = '4000px';
-      waveformImg.style.height = '100px';
-      // Fallback: dynamically render if PNG missing
-      waveformImg.onerror = async () => {
-        try {
-          waveformImg.onerror = null; // prevent loop
-          const buf = await this.ensureTrackBuffer(track.id, track.url);
-          const dataUrl = renderWaveformPng(buf, 4000, 100);
-          waveformImg.src = dataUrl;
-        } catch (e) {
-          console.error('Waveform render failed', e);
-        }
-      };
+      waveformImg.style.height = '50px';
+      // Dynamic render from decoded buffer
+      getBuf().then(buf => {
+        const dataUrl = renderWaveformPng(buf, 4000, 50);
+        waveformImg.src = dataUrl;
+      }).catch(e => console.error('Waveform render failed', e));
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
@@ -485,7 +479,6 @@ class MusicPlayerApp {
     // Add spectrogram if enabled
     if (spectrogramToggle?.checked) {
       const spectrogramImg = document.createElement('img');
-      spectrogramImg.src = derivePng(track.url, 'spectrogram');
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
       spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
@@ -493,17 +486,11 @@ class MusicPlayerApp {
       spectrogramImg.style.display = 'block';
       spectrogramImg.style.width = '4000px';
       spectrogramImg.style.height = '200px';
-      // Fallback: dynamically render if PNG missing
-      spectrogramImg.onerror = async () => {
-        try {
-          spectrogramImg.onerror = null; // prevent loop
-          const buf = await this.ensureTrackBuffer(track.id, track.url);
-          const dataUrl = renderSpectrogramPng(buf, 4000, 200);
-          spectrogramImg.src = dataUrl;
-        } catch (e) {
-          console.error('Spectrogram render failed', e);
-        }
-      };
+      // Dynamic render from decoded buffer
+      getBuf().then(buf => {
+        const dataUrl = renderSpectrogramPng(buf, 4000, 200);
+        spectrogramImg.src = dataUrl;
+      }).catch(e => console.error('Spectrogram render failed', e));
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
@@ -519,7 +506,7 @@ class MusicPlayerApp {
     const hasWave = !!(waveformToggle?.checked);
     const hasSpect = !!(spectrogramToggle?.checked);
     const marginBetween = hasWave && hasSpect ? 5 : 0;
-    const totalHeight = (hasWave ? 100 : 0) + (hasSpect ? 200 : 0) + marginBetween;
+    const totalHeight = (hasWave ? 50 : 0) + (hasSpect ? 200 : 0) + marginBetween;
     if (totalHeight > 0) container.style.height = `${totalHeight}px`;
     else container.style.height = '0px';
 
