@@ -122,7 +122,10 @@ export function renderSpectrogramPng(buffer: AudioBuffer, width = 4000, height =
       if (db > globalMax) globalMax = db;
     }
   }
-  const minDb = Math.max(globalMax - 80, -120);
+  // Dynamic range and brightness
+  // Use a wider range to avoid clipping quiet regions to pure black.
+  const dynamicRangeDb = 100; // slightly narrower to brighten overall
+  const minDb = Math.max(globalMax - dynamicRangeDb, -120);
   const maxDb = globalMax;
 
   const stops = [
@@ -134,7 +137,20 @@ export function renderSpectrogramPng(buffer: AudioBuffer, width = 4000, height =
   ];
   const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
   const grad = (v: number): [number, number, number] => {
-    const t = Math.max(0, Math.min(1, v));
+    // Clamp before gamma to avoid NaN for negative inputs
+    const vClamped = Math.max(0, Math.min(1, v));
+    // Apply gentle gamma and floor to brighten low-energy regions without washing out
+    const gamma = 0.4; // stronger brightening of shadows
+    const floor = 0; // higher minimum visibility
+    let t = Math.pow(vClamped, gamma);
+    t = floor + (1 - floor) * t;
+    // Boost highlights only (top range), keeping mids/shadows intact
+    const pivot = 0.85;   // start boosting top 15%
+    const strength = 0.6; // +60% headroom for highlights
+    if (t > pivot) {
+      t = pivot + (t - pivot) * (1 + strength);
+    }
+    t = Math.min(1, Math.max(0, t));
     let i = 0;
     while (i < stops.length - 1 && t > stops[i + 1].t) i++;
     const s0 = stops[i], s1 = stops[Math.min(i + 1, stops.length - 1)];
