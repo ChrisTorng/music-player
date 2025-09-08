@@ -363,11 +363,11 @@ class MusicPlayerApp {
         <span class="track-title">${track.label}</span>
         <div class="track-controls">
           <label>
-            <input type="checkbox" class="waveform-toggle" ${track.images.waveform ? 'checked' : ''}>
+            <input type="checkbox" class="waveform-toggle" checked>
             Waveform
           </label>
           <label>
-            <input type="checkbox" class="spectrogram-toggle" ${track.images.spectrogram ? 'checked' : ''}>
+            <input type="checkbox" class="spectrogram-toggle" checked>
             Spectrogram
           </label>
         </div>
@@ -431,10 +431,16 @@ class MusicPlayerApp {
     trackWrapper.style.transform = 'translateX(0px)';
     trackWrapper.style.willChange = 'transform';
     
-    // Add waveform if enabled and available
-    if (waveformToggle?.checked && track.images.waveform) {
+    // Helper to derive image URLs from MP3 URL
+    const derivePng = (mp3: string, kind: 'waveform' | 'spectrogram'): string => {
+      if (mp3.toLowerCase().endsWith('.mp3')) return mp3.replace(/\.mp3$/i, kind === 'waveform' ? '.waveform.png' : '.spectrogram.png');
+      return `${mp3}.${kind}.png`;
+    };
+
+    // Add waveform if enabled
+    if (waveformToggle?.checked) {
       const waveformImg = document.createElement('img');
-      waveformImg.src = track.images.waveform;
+      waveformImg.src = derivePng(track.url, 'waveform');
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
       // Fixed display size 4000×100
@@ -452,10 +458,10 @@ class MusicPlayerApp {
       trackWrapper.appendChild(waveformImg);
     }
     
-    // Add spectrogram if enabled and available
-    if (spectrogramToggle?.checked && track.images.spectrogram) {
+    // Add spectrogram if enabled
+    if (spectrogramToggle?.checked) {
       const spectrogramImg = document.createElement('img');
-      spectrogramImg.src = track.images.spectrogram;
+      spectrogramImg.src = derivePng(track.url, 'spectrogram');
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
       spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
@@ -475,8 +481,8 @@ class MusicPlayerApp {
     }
 
     // Compute and set container height based on enabled visuals
-    const hasWave = !!(waveformToggle?.checked && track.images.waveform);
-    const hasSpect = !!(spectrogramToggle?.checked && track.images.spectrogram);
+    const hasWave = !!(waveformToggle?.checked);
+    const hasSpect = !!(spectrogramToggle?.checked);
     const marginBetween = hasWave && hasSpect ? 5 : 0;
     const totalHeight = (hasWave ? 100 : 0) + (hasSpect ? 200 : 0) + marginBetween;
     if (totalHeight > 0) container.style.height = `${totalHeight}px`;

@@ -48,20 +48,12 @@
             {
               "id": "a1",
               "url": "home/audio/piano.mp3",
-              "label": "Piano",
-              "images": {
-                "waveform": "home/audio/piano.waveform.png",
-                "spectrogram": "home/audio/piano.spectrogram.png"
-              }
+              "label": "Piano"
             },
             {
               "id": "a2",
               "url": "home/audio/instrumental.mp3",
-              "label": "Instrumental",
-              "images": {
-                "waveform": "home/audio/inst.waveform.png",
-                "spectrogram": "home/audio/inst.spectrogram.png"
-              }
+              "label": "Instrumental"
             }
           ]
         }
@@ -93,7 +85,7 @@
 ```
 - `type`: `mp4` 或 `youtube`。
 - `audioGroups`: 同一頁籤下可切換的音訊組別；每組含 4–6 軌不等。
-- `tracks[].images.waveform/spectrogram`: 對應音軌的預渲染 PNG 路徑；可只提供其一。
+- 圖片路徑不需在 config 指定：由 mp3 路徑自動推導（`.mp3` → `.waveform.png` / `.spectrogram.png`）。
 - 視覺時間對映：嚴格依「主音訊時長」與圖片顯示寬度換算；若取不到主音訊時長，禁止播放。
 - `defaults.routing.left/right`: 左右聲道來源；`{"type":"audio","id":"aX"}` 或 `{"type":"video","position":"top|bottom"}`（僅限正在播放的影片）。
 - `score.entries`: 依時間排序的「樂譜行」切換點；`file` 建議遵循 `score/<page>-<system>.png` 命名。

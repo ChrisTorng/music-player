@@ -9,10 +9,6 @@ export interface AudioTrack {
   id: string;
   url: string;
   label: string;
-  images: {
-    waveform?: string;
-    spectrogram?: string;
-  };
 }
 
 export interface AudioGroup {

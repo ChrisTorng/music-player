@@ -29,47 +29,27 @@
             {
               "id": "home_full",
               "url": "home/audio/home.mp3",
-              "label": "Full Mix",
-              "images": {
-                "waveform": "home/audio/home.waveform.png",
-                "spectrogram": "home/audio/home.spectrogram.png"
-              }
+              "label": "Full Mix"
             },
             {
               "id": "home_piano",
               "url": "home/audio/home_(Piano).mp3",
-              "label": "Piano Only",
-              "images": {
-                "waveform": "home/audio/home_(Piano).waveform.png",
-                "spectrogram": "home/audio/home_(Piano).spectrogram.png"
-              }
+              "label": "Piano Only"
             },
             {
               "id": "home_instrumental",
               "url": "home/audio/home_(Instrumental).mp3", 
-              "label": "Instrumental",
-              "images": {
-                "waveform": "home/audio/home_(Instrumental).waveform.png",
-                "spectrogram": "home/audio/home_(Instrumental).spectrogram.png"
-              }
+              "label": "Instrumental"
             },
             {
               "id": "home_no_noise",
               "url": "home/audio/home_(No Noise).mp3",
-              "label": "No Noise",
-              "images": {
-                "waveform": "home/audio/home_(No Noise).waveform.png",
-                "spectrogram": "home/audio/home_(No Noise).spectrogram.png"
-              }
+              "label": "No Noise"
             },
             {
               "id": "home_other",
               "url": "home/audio/home_(Other).mp3",
-              "label": "Other Elements",
-              "images": {
-                "waveform": "home/audio/home_(Other).waveform.png",
-                "spectrogram": "home/audio/home_(Other).spectrogram.png"
-              }
+              "label": "Other Elements"
             }
           ]
         }
@@ -158,20 +138,12 @@
             {
               "id": "midi_2home",
               "url": "home-midi/audio/2 Home.mp3",
-              "label": "2 Home",
-              "images": {
-                "waveform": "home-midi/audio/2 Home.waveform.png",
-                "spectrogram": "home-midi/audio/2 Home.spectrogram.png"
-              }
+              "label": "2 Home"
             },
             {
               "id": "midi_3home_modified",
               "url": "home-midi/audio/3 Home Modified.mp3",
-              "label": "3 Home Modified", 
-              "images": {
-                "waveform": "home-midi/audio/3 Home Modified.waveform.png",
-                "spectrogram": "home-midi/audio/3 Home Modified.spectrogram.png"
-              }
+              "label": "3 Home Modified"
             }
           ]
         }
@@ -258,29 +230,17 @@
             {
               "id": "church_origin",
               "url": "church/audio/origin+others/origin.mp3",
-              "label": "Origin",
-              "images": {
-                "waveform": "church/audio/origin+others/origin.waveform.png",
-                "spectrogram": "church/audio/origin+others/origin.spectrogram.png"
-              }
+              "label": "Origin"
             },
             {
               "id": "church_instrumental",
               "url": "church/audio/origin+others/instrumental.mp3",
-              "label": "Instrumental",
-              "images": {
-                "waveform": "church/audio/origin+others/instrumental.waveform.png",
-                "spectrogram": "church/audio/origin+others/instrumental.spectrogram.png"
-              }
+              "label": "Instrumental"
             },
             {
               "id": "church_no_noise",
               "url": "church/audio/origin+others/no noise.mp3",
-              "label": "No Noise",
-              "images": {
-                "waveform": "church/audio/origin+others/no noise.waveform.png",
-                "spectrogram": "church/audio/origin+others/no noise.spectrogram.png"
-              }
+              "label": "No Noise"
             }
           ]
         },
@@ -291,47 +251,27 @@
             {
               "id": "church_vocals",
               "url": "church/audio/demucs4/Vocals.mp3",
-              "label": "Vocals",
-              "images": {
-                "waveform": "church/audio/demucs4/Vocals.waveform.png", 
-                "spectrogram": "church/audio/demucs4/Vocals.spectrogram.png"
-              }
+              "label": "Vocals"
             },
             {
               "id": "church_bass",
               "url": "church/audio/demucs4/Bass.mp3",
-              "label": "Bass",
-              "images": {
-                "waveform": "church/audio/demucs4/Bass.waveform.png",
-                "spectrogram": "church/audio/demucs4/Bass.spectrogram.png"
-              }
+              "label": "Bass"
             },
             {
               "id": "church_drums",
               "url": "church/audio/demucs4/Drums.mp3",
-              "label": "Drums",
-              "images": {
-                "waveform": "church/audio/demucs4/Drums.waveform.png",
-                "spectrogram": "church/audio/demucs4/Drums.spectrogram.png"
-              }
+              "label": "Drums"
             },
             {
               "id": "church_other",
               "url": "church/audio/demucs4/Other.mp3", 
-              "label": "Other",
-              "images": {
-                "waveform": "church/audio/demucs4/Other.waveform.png",
-                "spectrogram": "church/audio/demucs4/Other.spectrogram.png"
-              }
+              "label": "Other"
             },
             {
               "id": "church_other_bass",
               "url": "church/audio/demucs4/Other+Bass.mp3",
-              "label": "Other + Bass",
-              "images": {
-                "waveform": "church/audio/demucs4/Other+Bass.waveform.png",
-                "spectrogram": "church/audio/demucs4/Other+Bass.spectrogram.png"
-              }
+              "label": "Other + Bass"
             }
           ]
         },
@@ -342,65 +282,37 @@
             {
               "id": "church6_piano",
               "url": "church/audio/demucs6/Piano.mp3",
-              "label": "Piano",
-              "images": {
-                "waveform": "church/audio/demucs6/Piano.waveform.png",
-                "spectrogram": "church/audio/demucs6/Piano.spectrogram.png"
-              }
+              "label": "Piano"
             },
             {
               "id": "church6_guitar",
               "url": "church/audio/demucs6/Guitar.mp3", 
-              "label": "Guitar",
-              "images": {
-                "waveform": "church/audio/demucs6/Guitar.waveform.png",
-                "spectrogram": "church/audio/demucs6/Guitar.spectrogram.png"
-              }
+              "label": "Guitar"
             },
             {
               "id": "church6_vocals",
               "url": "church/audio/demucs6/Vocals.mp3",
-              "label": "Vocals",
-              "images": {
-                "waveform": "church/audio/demucs6/Vocals.waveform.png",
-                "spectrogram": "church/audio/demucs6/Vocals.spectrogram.png"
-              }
+              "label": "Vocals"
             },
             {
               "id": "church6_bass",
               "url": "church/audio/demucs6/Bass.mp3",
-              "label": "Bass",
-              "images": {
-                "waveform": "church/audio/demucs6/Bass.waveform.png",
-                "spectrogram": "church/audio/demucs6/Bass.spectrogram.png"
-              }
+              "label": "Bass"
             },
             {
               "id": "church6_drums",
               "url": "church/audio/demucs6/Drums.mp3",
-              "label": "Drums",
-              "images": {
-                "waveform": "church/audio/demucs6/Drums.waveform.png",
-                "spectrogram": "church/audio/demucs6/Drums.spectrogram.png"
-              }
+              "label": "Drums"
             },
             {
               "id": "church6_other",
               "url": "church/audio/demucs6/Other.mp3",
-              "label": "Other",
-              "images": {
-                "waveform": "church/audio/demucs6/Other.waveform.png",
-                "spectrogram": "church/audio/demucs6/Other.spectrogram.png"
-              }
+              "label": "Other"
             },
             {
               "id": "church6_mix",
               "url": "church/audio/demucs6/Piano+Guitar+Bass+Other.mp3",
-              "label": "Piano+Guitar+Bass+Other",
-              "images": {
-                "waveform": "church/audio/demucs6/Piano+Guitar+Bass+Other.waveform.png",
-                "spectrogram": "church/audio/demucs6/Piano+Guitar+Bass+Other.spectrogram.png"
-              }
+              "label": "Piano+Guitar+Bass+Other"
             }
           ]
         }

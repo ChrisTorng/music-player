@@ -112,19 +112,11 @@ export class ConfigLoader {
         }
       }
 
-      // Resolve audio track URLs and image paths
+      // Resolve audio track URLs
       for (const audioGroup of tab.audioGroups) {
         for (const track of audioGroup.tracks) {
           if (!track.url.startsWith('http')) {
             track.url = `${this.basePath}/${track.url}`;
-          }
-          
-          if (track.images.waveform && !track.images.waveform.startsWith('http')) {
-            track.images.waveform = `${this.basePath}/${track.images.waveform}`;
-          }
-          
-          if (track.images.spectrogram && !track.images.spectrogram.startsWith('http')) {
-            track.images.spectrogram = `${this.basePath}/${track.images.spectrogram}`;
           }
         }
       }
