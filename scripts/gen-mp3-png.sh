@@ -4,7 +4,7 @@ set -euo pipefail
 # Generate missing PNGs for MP3s under any directory:
 # - Waveform: peak-normalized to 0 dBFS, 4000x100, white on transparent
 #   Output name: <basename>.waveform.png
-# - Spectrogram: magma colormap, 4000x150, transparent background
+# - Spectrogram: magma colormap, 4000x200, opaque background
 #   Output name: <basename>.spectrogram.png
 #
 # Options:
@@ -45,10 +45,8 @@ make_waveform() {
 
 make_spectrogram() {
   local in_mp3="$1" out_png="$2"
-  # Previous version used colorkey to make near-black transparent, which caused the upper
-  # frequency band (often very low energy in piano material) to become fully transparent
-  # leaving apparent "empty" space. We remove colorkey so the full 200px height is visually
-  # occupied. Slight brightness lift helps low-energy bands show faint color instead of pure black.
+  # Keep full 200px height visually occupied; no colorkey transparency for spectrogram.
+  # Slight contrast/brightness lift helps low-energy bands show faint color instead of pure black.
   echo "[spectrogram] magma 4000x200 (no colorkey) -> $out_png"
   ffmpeg -y -i "$in_mp3" \
     -lavfi "aformat=channel_layouts=mono,showspectrumpic=s=4000x200:legend=disabled:scale=log:color=magma,eq=contrast=1.55:brightness=0.02:saturation=1.25,format=rgba" \
@@ -84,4 +82,3 @@ for f in "${files[@]}"; do
 done
 
 echo "[done] Generation complete."
-

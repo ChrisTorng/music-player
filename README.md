@@ -2,7 +2,7 @@
 
 以純瀏覽器、純 TypeScript 實作的多素材音樂播放介面：
 - 以 URL 參數 `?piece=<folder-name>` 載入指定樂曲資料夾的 `config.json`。
-- 同一樂曲內以「頁籤」切換素材組；頁籤以 Query String 切換為新網址 `?piece=...&tab=<tab-id>` 並重新載入，因此每個頁籤的播放狀態互不影響；左側可顯示上下兩個影片，右側管理多軌音訊與視覺化（波形/頻譜 PNG）。
+- 同一樂曲內以「頁籤」切換素材組；頁籤以 Query String 切換為新網址 `?piece=...&tab=<tab-id>` 並重新載入，因此每個頁籤的播放狀態互不影響；左側可顯示上下兩個影片，右側管理多軌音訊與視覺化（波形/頻譜）。
 - 支援以預渲染的樂譜行圖（`score/<page>-<system>.png`）依時間自動切換（詳見 PLAN.md 里程碑）。
 
 目前狀態：已完成基本 UI 與設定載入、MP4 顯示與以 Query String 切換的頁籤導向雛型；YouTube、Web Audio 路由、互動式波形/頻譜與樂譜同步等核心功能將依里程碑逐步落實（見下方「里程碑」）。
@@ -32,7 +32,7 @@
 完整格式與範例請見 PLAN.md；要點如下：
 - `tabs[]`：每個頁籤一組素材。
   - `videos[]`：`{ id, type: 'mp4'|'youtube', url, label }`。
-  - `audioGroups[]`：音訊組別；每組含多軌 `tracks[]`，每軌含檔案 `url` 與視覺圖 `images.waveform/spectrogram`（PNG）。
+  - `audioGroups[]`：音訊組別；每組含多軌 `tracks[]`，每軌僅需檔案 `url` 與 `label`。波形/頻譜圖檔不需在 config 指定，前端會自動依 MP3 路徑推導。
   - `score`：`basePath`（相對於樂曲資料夾）、`entries[]`（按時間切換的樂譜行檔名與時間點）、動畫設定與預載範圍。
   - `defaults`：預設上/下影片、預設音訊組別與左右聲道路由（可指向音軌或正在播放的影片）。
 - 網址參數：
@@ -45,6 +45,14 @@
 - 素材分桶：`home/`、`church/`、`home-midi/` 之下將檔案分置於 `audio/` 或 `video/`。
 - 變體命名：沿用括號樣式，例如 `home_(Piano).mp3`, `home_(Instrumental).mp3`。
 - 檔名字元：偏好 UTF-8；新增資產儘量避免空白（若需，請與現有風格一致）。
+
+### 波形/頻譜圖檔推導與動態產生
+- 圖檔路徑自動推導：`foo.mp3` → `foo.waveform.png` 與 `foo.spectrogram.png`（與 mp3 同資料夾）。
+- 預設顯示尺寸：
+  - 波形：4000×100 px（白色線條，透明背景）
+  - 頻譜：4000×200 px（近似 magma 色盤，實色背景）
+- 若上述 PNG 檔案存在則直接載入；若載入失敗（如 404），前端會在瀏覽器端動態解碼 MP3 並即時繪製於 Canvas，轉為 data URL 顯示（不會落地存檔）。
+- 建議仍以離線腳本預先產生 PNG 以降低啟動延遲；前端動態繪製作為缺圖時的自動後援。
 
 ## 媒體檢查與轉碼（建議）
 - 快速清單檢視：`find <piece> -type f | sort`
@@ -59,6 +67,12 @@
 - 即時編譯：`npm run dev`
 - 啟動本機伺服：`npm run serve`
 - PR 提交規範：請勿包含 `js/` 或 `css/` 的手動修改；僅提交 `src/` 的來源變更與文件、媒體檔案等必要內容。
+
+### 產生波形/頻譜 PNG（選用，離線批次）
+- `scripts/gen-mp3-png.sh [-f] [-r DIR]`
+  - 對 `DIR`（預設當前目錄）下所有 `*.mp3` 產生缺少的 `*.waveform.png`（4000×100）與 `*.spectrogram.png`（4000×200）。
+  - `-f` 強制覆蓋已有 PNG。
+  - 需要本機安裝 `ffmpeg`。
 
 ## 里程碑（摘自 PLAN.md）
 1. URL 參數解析與頁籤連結（`?tab=`）生成＋重新載入導向

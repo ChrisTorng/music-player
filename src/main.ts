@@ -2,6 +2,7 @@ import { ConfigLoader } from './config/loader.js';
 import { Config, Tab } from './config/types.js';
 import { VideoManager } from './video/manager.js';
 import { AudioEngine } from './audio/engine.js';
+import { renderWaveformPng, renderSpectrogramPng } from './visual/renderer.js';
 
 class MusicPlayerApp {
   private config: Config | null = null;
@@ -54,6 +55,18 @@ class MusicPlayerApp {
     } catch (error) {
       this.showError(error instanceof Error ? error.message : 'Unknown error occurred');
     }
+  }
+
+  // ---- Dynamic visual generation helpers ----
+  private async ensureTrackBuffer(trackId: string, url: string): Promise<AudioBuffer> {
+    // Try existing buffer in engine first
+    let buf = this.audioEngine.getTrackBuffer(trackId);
+    if (buf) return buf;
+    // If not loaded yet, load via engine to leverage same AudioContext
+    await this.audioEngine.loadAudioTrack(trackId, url);
+    buf = this.audioEngine.getTrackBuffer(trackId);
+    if (!buf) throw new Error('Failed to decode audio buffer');
+    return buf;
   }
 
   private showLoading(show: boolean): void {
@@ -447,6 +460,17 @@ class MusicPlayerApp {
       waveformImg.style.display = 'block';
       waveformImg.style.width = '4000px';
       waveformImg.style.height = '100px';
+      // Fallback: dynamically render if PNG missing
+      waveformImg.onerror = async () => {
+        try {
+          waveformImg.onerror = null; // prevent loop
+          const buf = await this.ensureTrackBuffer(track.id, track.url);
+          const dataUrl = renderWaveformPng(buf, 4000, 100);
+          waveformImg.src = dataUrl;
+        } catch (e) {
+          console.error('Waveform render failed', e);
+        }
+      };
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
@@ -469,6 +493,17 @@ class MusicPlayerApp {
       spectrogramImg.style.display = 'block';
       spectrogramImg.style.width = '4000px';
       spectrogramImg.style.height = '200px';
+      // Fallback: dynamically render if PNG missing
+      spectrogramImg.onerror = async () => {
+        try {
+          spectrogramImg.onerror = null; // prevent loop
+          const buf = await this.ensureTrackBuffer(track.id, track.url);
+          const dataUrl = renderSpectrogramPng(buf, 4000, 200);
+          spectrogramImg.src = dataUrl;
+        } catch (e) {
+          console.error('Spectrogram render failed', e);
+        }
+      };
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });

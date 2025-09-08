@@ -29,7 +29,7 @@
             {
               "id": "home_full",
               "url": "home/audio/home.mp3",
-              "label": "Full Mix"
+              "label": "Original"
             },
             {
               "id": "home_piano",
@@ -39,7 +39,7 @@
             {
               "id": "home_instrumental",
               "url": "home/audio/home_(Instrumental).mp3", 
-              "label": "Instrumental"
+              "label": "Instrumental Only"
             },
             {
               "id": "home_no_noise",
@@ -49,7 +49,7 @@
             {
               "id": "home_other",
               "url": "home/audio/home_(Other).mp3",
-              "label": "Other Elements"
+              "label": "Other Only"
             }
           ]
         }

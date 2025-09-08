@@ -34,6 +34,7 @@ export class AudioEngine {
   private channelMerger: ChannelMergerNode | null = null;
   
   private audioTracks = new Map<string, LoadedAudioTrack>();
+  private loading = new Map<string, Promise<void>>();
   private videoSources = new Map<'top' | 'bottom', LoadedVideoSource>();
   private currentRouting: AudioRouting = { left: null, right: null };
   
@@ -87,9 +88,20 @@ export class AudioEngine {
     }
 
     try {
-      // Create track entry
-      const gainNode = this.audioContext.createGain();
-      const track: LoadedAudioTrack = {
+      // If already loaded, return
+      const existing = this.audioTracks.get(id);
+      if (existing?.buffer) return;
+
+      // If already loading, await the in-flight promise
+      const inFlight = this.loading.get(id);
+      if (inFlight) {
+        await inFlight;
+        return;
+      }
+
+      // Ensure a track entry exists and reuse its gainNode
+      const gainNode = existing?.gainNode || this.audioContext.createGain();
+      const track: LoadedAudioTrack = existing || {
         id,
         url,
         buffer: null,
@@ -98,20 +110,23 @@ export class AudioEngine {
         isLoaded: false,
         isPlaying: false
       };
-      
+      track.url = url;
       this.audioTracks.set(id, track);
-      
-      // Load audio buffer
-      const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      
-      track.buffer = audioBuffer;
-      track.isLoaded = true;
-      
+
+      const loadP = (async () => {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await this.audioContext!.decodeAudioData(arrayBuffer);
+        track.buffer = audioBuffer;
+        track.isLoaded = true;
+      })();
+      this.loading.set(id, loadP);
+      await loadP;
+      this.loading.delete(id);
     } catch (error) {
       console.error(`Failed to load audio track ${id}:`, error);
       this.audioTracks.delete(id);
+      this.loading.delete(id);
       throw error;
     }
   }
@@ -409,5 +424,16 @@ export class AudioEngine {
       this.audioContext.close();
       this.audioContext = null;
     }
+  }
+
+  // Expose audio context for consumers that need sampleRate or decoding
+  getAudioContext(): AudioContext | null {
+    return this.audioContext;
+  }
+
+  // Access decoded buffer for a loaded track
+  getTrackBuffer(id: string): AudioBuffer | null {
+    const t = this.audioTracks.get(id);
+    return t?.buffer || null;
   }
 }
