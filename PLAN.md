@@ -76,8 +76,7 @@
           "left": { "type": "audio", "id": "a1" },
           "right": { "type": "audio", "id": "a1" }
         }
-      },
-      "preload": { "images": true }
+      }
     }
   ],
   "defaultTab": "home"

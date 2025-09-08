@@ -100,12 +100,7 @@
           "left": { "type": "audio", "id": "home_piano" },
           "right": { "type": "audio", "id": "home_full" }
         },
-        "visuals": {
-          "waveform": true,
-          "spectrogram": false
-        }
-      },
-      "preload": { "images": true }
+      }
     },
     {
       "id": "home-midi",
@@ -194,12 +189,7 @@
           "left": { "type": "audio", "id": "midi_2home" },
           "right": { "type": "audio", "id": "midi_2home" }
         },
-        "visuals": {
-          "waveform": true,
-          "spectrogram": true
-        }
-      },
-      "preload": { "images": true }
+      }
     },
     {
       "id": "church",
@@ -363,12 +353,7 @@
           "left": { "type": "audio", "id": "church_origin" },
           "right": { "type": "audio", "id": "church_no_noise" }
         },
-        "visuals": {
-          "waveform": true,
-          "spectrogram": false
-        }
-      },
-      "preload": { "images": true }
+      }
     }
   ],
   "defaultTab": "home"

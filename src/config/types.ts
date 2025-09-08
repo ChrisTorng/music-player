@@ -49,10 +49,6 @@ export interface TabDefaults {
     left: AudioRouting;
     right: AudioRouting;
   };
-  visuals?: {
-    waveform?: boolean;
-    spectrogram?: boolean;
-  };
 }
 
 export interface Tab {
@@ -62,9 +58,6 @@ export interface Tab {
   audioGroups: AudioGroup[];
   score: ScoreConfig;
   defaults: TabDefaults;
-  preload: {
-    images: boolean;
-  };
 }
 
 export interface Config {
