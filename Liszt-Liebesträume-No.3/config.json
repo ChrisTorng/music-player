@@ -99,7 +99,7 @@
         "routing": {
           "left": { "type": "audio", "id": "home_piano" },
           "right": { "type": "audio", "id": "home_full" }
-        },
+        }
       }
     },
     {
@@ -188,7 +188,7 @@
         "routing": {
           "left": { "type": "audio", "id": "midi_2home" },
           "right": { "type": "audio", "id": "midi_2home" }
-        },
+        }
       }
     },
     {
@@ -352,7 +352,7 @@
         "routing": {
           "left": { "type": "audio", "id": "church_origin" },
           "right": { "type": "audio", "id": "church_no_noise" }
-        },
+        }
       }
     }
   ],
