@@ -11,7 +11,7 @@ class MusicPlayerApp {
   private isPlaying: boolean = false;
   private audioEngine: AudioEngine;
   private cursorRaf: number | null = null;
-  private trackImageInfo: Map<string, { pxPerSecond: number; imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null; wrapperEl: HTMLDivElement | null }>;
+  private trackImageInfo: Map<string, { imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null; wrapperEl: HTMLDivElement | null }>;
   private pieceName: string = '';
 
   constructor() {
@@ -155,6 +155,12 @@ class MusicPlayerApp {
         this.audioEngine.pauseAll();
         this.isPlaying = false;
       } else {
+        // Require master audio duration; if unavailable, block playback
+        const duration = this.audioEngine.getMasterAudioDuration();
+        if (!duration || !isFinite(duration) || duration <= 0) {
+          alert('No master audio duration available. Please select/load an audio track for routing before playing.');
+          return;
+        }
         // Start audio first (master clock), then video
         await this.audioEngine.resume();
         await this.audioEngine.playAll();
@@ -207,6 +213,8 @@ class MusicPlayerApp {
     // Load audio for default group and apply routing
     this.loadSelectedGroupAudioTracks().then(() => {
       this.applyRoutingFromSelectors();
+      // After audio loads, we should have duration; re-align visuals at t=0
+      this.updateAllVisualsPosition(0);
     }).catch(err => console.error('Audio preload failed:', err));
   }
 
@@ -315,7 +323,10 @@ class MusicPlayerApp {
     audioGroupSelect.addEventListener('change', () => {
       this.updateAudioTracks();
       this.updateChannelSelectors();
-      this.loadSelectedGroupAudioTracks().then(() => this.applyRoutingFromSelectors()).catch(err => console.error(err));
+      this.loadSelectedGroupAudioTracks().then(() => {
+        this.applyRoutingFromSelectors();
+        this.updateAllVisualsPosition(0);
+      }).catch(err => console.error(err));
     });
   }
 
@@ -432,11 +443,11 @@ class MusicPlayerApp {
       waveformImg.style.height = '100px';
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
-        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
+        this.trackImageInfo.set(track.id, { imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
         // Recompute position after image metrics are available
         const clock = this.audioEngine.getMasterClock();
         const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
-        this.positionWrapper(container, trackWrapper, t, track.images.pxPerSecond);
+        this.positionWrapper(container, trackWrapper, t);
       };
       trackWrapper.appendChild(waveformImg);
     }
@@ -454,11 +465,11 @@ class MusicPlayerApp {
       spectrogramImg.style.height = '200px';
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
-        this.trackImageInfo.set(track.id, { pxPerSecond: track.images.pxPerSecond, imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
+        this.trackImageInfo.set(track.id, { imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
         // Recompute position after image metrics are available
         const clock = this.audioEngine.getMasterClock();
         const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
-        this.positionWrapper(container, trackWrapper, t, track.images.pxPerSecond);
+        this.positionWrapper(container, trackWrapper, t);
       };
       trackWrapper.appendChild(spectrogramImg);
     }
@@ -487,8 +498,14 @@ class MusicPlayerApp {
     container.appendChild(cursor);
 
     // Set initial alignment: left edge under the centered cursor
-    // Initial alignment: left edge under center before playback
-    this.positionWrapper(container, trackWrapper, 0, this.trackImageInfo.get(trackId)?.pxPerSecond || track.images.pxPerSecond);
+    // If audio duration not yet available, center-align left edge directly.
+    const dur = this.audioEngine.getMasterAudioDuration();
+    if (dur && isFinite(dur) && dur > 0) {
+      this.positionWrapper(container, trackWrapper, 0);
+    } else {
+      const center = container.clientWidth / 2;
+      trackWrapper.style.transform = `translateX(${center}px)`;
+    }
   }
 
   private updateChannelSelectors(): void {
@@ -599,7 +616,7 @@ class MusicPlayerApp {
         // Center cursor; move the wrapper according to current time
         const cursor = container.querySelector('.cursor-line') as HTMLDivElement | null;
         if (cursor) cursor.style.left = '50%';
-        this.positionWrapper(container, wrapper, clock.currentTime, info.pxPerSecond);
+        this.positionWrapper(container, wrapper, clock.currentTime);
       });
       this.cursorRaf = requestAnimationFrame(tick);
     };
@@ -607,26 +624,24 @@ class MusicPlayerApp {
   }
 
   // Compute and apply wrapper translation for a given time
-  private positionWrapper(container: HTMLElement, wrapper: HTMLElement, timeSec: number, pxPerSecond: number): void {
+  private positionWrapper(container: HTMLElement, wrapper: HTMLElement, timeSec: number): void {
     // Determine the track pixel width in CSS pixels (displayed width)
     const refImg = (wrapper.querySelector('img.visual-image') as HTMLImageElement) || null;
     const styleWidth = refImg ? parseInt(refImg.style.width || '0', 10) : 0;
     const trackWidth = refImg ? (refImg.clientWidth || styleWidth || refImg.width || refImg.naturalWidth || 0) : Math.max(wrapper.scrollWidth, wrapper.clientWidth, 0);
     if (!trackWidth) return;
 
-    // Prefer master audio duration (source of truth); fallback to pxPerSecond mapping.
+    // Prefer master audio duration; if unavailable but time is 0, still center-align left edge
     const audioDuration = this.audioEngine.getMasterAudioDuration();
-    let x: number;
-    if (audioDuration && audioDuration > 0) {
-      const clamped = Math.max(0, Math.min(timeSec, audioDuration));
-      x = (clamped / audioDuration) * trackWidth;
-    } else if (pxPerSecond && isFinite(pxPerSecond)) {
-      const maxTime = trackWidth / pxPerSecond;
-      const clamped = Math.max(0, Math.min(timeSec, maxTime));
-      x = clamped * pxPerSecond;
-    } else {
-      return; // insufficient info to position
+    if (!audioDuration || !isFinite(audioDuration) || audioDuration <= 0) {
+      if (timeSec === 0) {
+        const centerX0 = container.clientWidth / 2;
+        wrapper.style.transform = `translateX(${centerX0}px)`;
+      }
+      return;
     }
+    const clamped = Math.max(0, Math.min(timeSec, audioDuration));
+    const x = (clamped / audioDuration) * trackWidth;
 
     const viewportWidth = container.clientWidth;
     const centerX = viewportWidth / 2;
@@ -647,9 +662,7 @@ class MusicPlayerApp {
       const parent = container.closest('.audio-track') as HTMLElement | null;
       const trackId = parent?.dataset.trackId;
       if (!trackId) return;
-      const info = this.trackImageInfo.get(trackId);
-      const pxPerSecond = info?.pxPerSecond || 100;
-      this.positionWrapper(container, wrapper, timeSec, pxPerSecond);
+      this.positionWrapper(container, wrapper, timeSec);
     });
   }
 

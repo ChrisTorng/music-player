@@ -12,7 +12,6 @@ export interface AudioTrack {
   images: {
     waveform?: string;
     spectrogram?: string;
-    pxPerSecond: number;
   };
 }
 

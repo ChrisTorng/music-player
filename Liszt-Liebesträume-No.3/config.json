@@ -6,14 +6,18 @@
       "videos": [
         {
           "id": "home_v1",
-          "type": "mp4",
-          "url": "home/video/home.mp4",
+          "type": "youtube",
+          "url": "https://www.youtube.com/watch?v=H7K-8hTn13s",
+          // "type": "mp4",
+          // "url": "home/video/home.mp4",
           "label": "Home Performance"
         },
         {
           "id": "home_v2", 
-          "type": "mp4",
-          "url": "home/video/Liszt, Libestraume No.3_ - Ableton Live 12 Lite 2025-08-11 23-02-23.mp4",
+          "type": "youtube",
+          "url": "https://www.youtube.com/watch?v=zievs16r23c",
+          // "type": "mp4",
+          // "url": "home/video/home Ableton Live.mp4",
           "label": "Ableton Live Recording"
         }
       ],
@@ -28,8 +32,7 @@
               "label": "Full Mix",
               "images": {
                 "waveform": "home/audio/home.waveform.png",
-                "spectrogram": "home/audio/home.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home/audio/home.spectrogram.png"
               }
             },
             {
@@ -38,8 +41,7 @@
               "label": "Piano Only",
               "images": {
                 "waveform": "home/audio/home_(Piano).waveform.png",
-                "spectrogram": "home/audio/home_(Piano).spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home/audio/home_(Piano).spectrogram.png"
               }
             },
             {
@@ -48,8 +50,7 @@
               "label": "Instrumental",
               "images": {
                 "waveform": "home/audio/home_(Instrumental).waveform.png",
-                "spectrogram": "home/audio/home_(Instrumental).spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home/audio/home_(Instrumental).spectrogram.png"
               }
             },
             {
@@ -58,8 +59,7 @@
               "label": "No Noise",
               "images": {
                 "waveform": "home/audio/home_(No Noise).waveform.png",
-                "spectrogram": "home/audio/home_(No Noise).spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home/audio/home_(No Noise).spectrogram.png"
               }
             },
             {
@@ -68,8 +68,7 @@
               "label": "Other Elements",
               "images": {
                 "waveform": "home/audio/home_(Other).waveform.png",
-                "spectrogram": "home/audio/home_(Other).spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home/audio/home_(Other).spectrogram.png"
               }
             }
           ]
@@ -162,8 +161,7 @@
               "label": "2 Home",
               "images": {
                 "waveform": "home-midi/audio/2 Home.waveform.png",
-                "spectrogram": "home-midi/audio/2 Home.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home-midi/audio/2 Home.spectrogram.png"
               }
             },
             {
@@ -172,8 +170,7 @@
               "label": "3 Home Modified", 
               "images": {
                 "waveform": "home-midi/audio/3 Home Modified.waveform.png",
-                "spectrogram": "home-midi/audio/3 Home Modified.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "home-midi/audio/3 Home Modified.spectrogram.png"
               }
             }
           ]
@@ -238,14 +235,16 @@
       "videos": [
         {
           "id": "church_v2",
-          "type": "mp4",
-          "url": "church/video/Liszt, Libestraume No.3 Church Performance.mp4",
+          "type": "youtube",
+          "url": "https://www.youtube.com/watch?v=OWroidHfscM",
+          // "type": "mp4",
+          // "url": "church/video/Liszt, Libestraume No.3 Church Performance.mp4",
           "label": "Church Performance"
         },
         {
           "id": "church_v1",
           "type": "youtube",
-          "url": "https://www.youtube.com/watch?v=oT6bomn_kns",
+          "url": "https://www.youtube.com/watch?v=YDjoDKCRteY",
           // "type": "mp4",
           // "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
           "label": "Church Ableton Live"
@@ -262,8 +261,7 @@
               "label": "Origin",
               "images": {
                 "waveform": "church/audio/origin+others/origin.waveform.png",
-                "spectrogram": "church/audio/origin+others/origin.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/origin+others/origin.spectrogram.png"
               }
             },
             {
@@ -272,8 +270,7 @@
               "label": "Instrumental",
               "images": {
                 "waveform": "church/audio/origin+others/instrumental.waveform.png",
-                "spectrogram": "church/audio/origin+others/instrumental.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/origin+others/instrumental.spectrogram.png"
               }
             },
             {
@@ -282,8 +279,7 @@
               "label": "No Noise",
               "images": {
                 "waveform": "church/audio/origin+others/no noise.waveform.png",
-                "spectrogram": "church/audio/origin+others/no noise.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/origin+others/no noise.spectrogram.png"
               }
             }
           ]
@@ -298,8 +294,7 @@
               "label": "Vocals",
               "images": {
                 "waveform": "church/audio/demucs4/Vocals.waveform.png", 
-                "spectrogram": "church/audio/demucs4/Vocals.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs4/Vocals.spectrogram.png"
               }
             },
             {
@@ -308,8 +303,7 @@
               "label": "Bass",
               "images": {
                 "waveform": "church/audio/demucs4/Bass.waveform.png",
-                "spectrogram": "church/audio/demucs4/Bass.spectrogram.png", 
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs4/Bass.spectrogram.png"
               }
             },
             {
@@ -318,8 +312,7 @@
               "label": "Drums",
               "images": {
                 "waveform": "church/audio/demucs4/Drums.waveform.png",
-                "spectrogram": "church/audio/demucs4/Drums.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs4/Drums.spectrogram.png"
               }
             },
             {
@@ -328,8 +321,7 @@
               "label": "Other",
               "images": {
                 "waveform": "church/audio/demucs4/Other.waveform.png",
-                "spectrogram": "church/audio/demucs4/Other.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs4/Other.spectrogram.png"
               }
             },
             {
@@ -338,8 +330,7 @@
               "label": "Other + Bass",
               "images": {
                 "waveform": "church/audio/demucs4/Other+Bass.waveform.png",
-                "spectrogram": "church/audio/demucs4/Other+Bass.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs4/Other+Bass.spectrogram.png"
               }
             }
           ]
@@ -354,8 +345,7 @@
               "label": "Piano",
               "images": {
                 "waveform": "church/audio/demucs6/Piano.waveform.png",
-                "spectrogram": "church/audio/demucs6/Piano.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Piano.spectrogram.png"
               }
             },
             {
@@ -364,8 +354,7 @@
               "label": "Guitar",
               "images": {
                 "waveform": "church/audio/demucs6/Guitar.waveform.png",
-                "spectrogram": "church/audio/demucs6/Guitar.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Guitar.spectrogram.png"
               }
             },
             {
@@ -374,8 +363,7 @@
               "label": "Vocals",
               "images": {
                 "waveform": "church/audio/demucs6/Vocals.waveform.png",
-                "spectrogram": "church/audio/demucs6/Vocals.spectrogram.png", 
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Vocals.spectrogram.png"
               }
             },
             {
@@ -384,8 +372,7 @@
               "label": "Bass",
               "images": {
                 "waveform": "church/audio/demucs6/Bass.waveform.png",
-                "spectrogram": "church/audio/demucs6/Bass.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Bass.spectrogram.png"
               }
             },
             {
@@ -394,8 +381,7 @@
               "label": "Drums",
               "images": {
                 "waveform": "church/audio/demucs6/Drums.waveform.png",
-                "spectrogram": "church/audio/demucs6/Drums.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Drums.spectrogram.png"
               }
             },
             {
@@ -404,8 +390,7 @@
               "label": "Other",
               "images": {
                 "waveform": "church/audio/demucs6/Other.waveform.png",
-                "spectrogram": "church/audio/demucs6/Other.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Other.spectrogram.png"
               }
             },
             {
@@ -414,8 +399,7 @@
               "label": "Piano+Guitar+Bass+Other",
               "images": {
                 "waveform": "church/audio/demucs6/Piano+Guitar+Bass+Other.waveform.png",
-                "spectrogram": "church/audio/demucs6/Piano+Guitar+Bass+Other.spectrogram.png",
-                "pxPerSecond": 100
+                "spectrogram": "church/audio/demucs6/Piano+Guitar+Bass+Other.spectrogram.png"
               }
             }
           ]

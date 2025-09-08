@@ -16,6 +16,10 @@
 - Waveform image export size: 4000×100 px.
 - Spectrogram image export size: 4000×200 px.
 
+## Visual Timing Mapping
+- Visual scroll is based solely on master audio duration vs. image display width.
+- If master audio duration cannot be determined from routed audio, playback is disabled until a valid audio source is selected/loaded.
+
 ## Build, Test, and Development Commands
 - No build system; this repo tracks media assets.
 - Validate media quickly:
