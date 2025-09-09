@@ -94,7 +94,11 @@ export function renderSpectrogramPng(buffer: AudioBuffer, width = 4000, height =
   const ctx = canvas.getContext('2d')!;
   const img = ctx.createImageData(width, height);
 
-  const winSize = 1024;
+  // Use larger FFT to improve low-frequency resolution (adaptive up to 4096)
+  const preferred = 4096;
+  let winSize = 1024;
+  while (winSize * 2 <= mono.length && winSize < preferred) winSize *= 2;
+  if (winSize < 1024) winSize = 1024;
   const hop = Math.max(1, Math.floor((mono.length - winSize) / Math.max(1, width - 1)));
   const windowFunc = new Float32Array(winSize);
   for (let i = 0; i < winSize; i++) windowFunc[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (winSize - 1)));
@@ -116,8 +120,21 @@ export function renderSpectrogramPng(buffer: AudioBuffer, width = 4000, height =
     // yCanvas: 0=top (high freq), height-1=bottom (low freq)
     for (let yCanvas = 0; yCanvas < height; yCanvas++) {
       const fracCanvas = 1 - (yCanvas / (height - 1)); // emphasize highs at top
-      const idx = Math.min(mags.length - 1, Math.floor((fracCanvas * fracCanvas) * (mags.length - 1)));
-      const db = 20 * Math.log10(mags[idx]);
+      // Fractional bin index (power mapping to favor low-frequency resolution)
+      const idxFloat = (fracCanvas * fracCanvas) * (mags.length - 1);
+      const i0 = Math.max(0, Math.min(mags.length - 1, Math.floor(idxFloat)));
+      const alpha = Math.max(0, Math.min(1, idxFloat - i0));
+      // Linear interpolation between adjacent bins
+      const i1 = Math.min(mags.length - 1, i0 + 1);
+      const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+      const base = lerp(mags[i0], mags[i1], alpha);
+      // Gentle smoothing across neighboring bins to reduce banding at low frequencies
+      const il = Math.max(0, i0 - 1);
+      const ir = Math.min(mags.length - 1, i1 + 1);
+      const left = lerp(mags[il], mags[i0], alpha);
+      const right = lerp(mags[i1], mags[ir], alpha);
+      const mag = 0.5 * base + 0.25 * left + 0.25 * right;
+      const db = 20 * Math.log10(mag);
       specDb[x][yCanvas] = db;
       if (db > globalMax) globalMax = db;
     }
