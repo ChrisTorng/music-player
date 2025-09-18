@@ -155,14 +155,14 @@ class MusicPlayerApp {
     // Keep visuals aligned on window resize
     window.addEventListener('resize', () => {
       const clock = this.audioEngine.getMasterClock();
-      const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+      const t = this.isPlaying ? clock.currentTime : 0;
       this.updateAllVisualsPosition(t);
     });
   }
 
   private async togglePlayPause(): Promise<void> {
     try {
-      if (this.videoManager.isAnyPlaying()) {
+      if (this.isPlaying) {
         // Pause both video and audio
         this.videoManager.pauseAll();
         this.audioEngine.pauseAll();
@@ -177,13 +177,15 @@ class MusicPlayerApp {
         // Start audio first (master clock), then video
         await this.audioEngine.resume();
         await this.audioEngine.playAll();
-        await this.videoManager.playAll();
+        const clock = this.audioEngine.getMasterClock();
+        await this.videoManager.playAll(clock.currentTime, () => this.audioEngine.getMasterClock().currentTime);
         this.isPlaying = true;
         this.startCursorLoop();
       }
       this.updatePlayPauseButton();
     } catch (error) {
       console.error('Playback error:', error);
+      this.isPlaying = false;
       // Handle autoplay restrictions
       if (error instanceof Error && error.message.includes('play')) {
         alert('Please click play again to start playback. Browser autoplay restrictions may apply.');
@@ -194,7 +196,7 @@ class MusicPlayerApp {
   private updatePlayPauseButton(): void {
     const playPauseBtn = document.getElementById('play-pause-btn');
     if (playPauseBtn) {
-      const isPlaying = this.videoManager.isAnyPlaying();
+      const isPlaying = this.isPlaying || this.videoManager.isAnyPlaying();
       playPauseBtn.textContent = isPlaying ? '⏸️ Pause' : '▶️ Play';
     }
   }
@@ -470,7 +472,7 @@ class MusicPlayerApp {
         this.trackImageInfo.set(track.id, { imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
         // Recompute position after image metrics are available
         const clock = this.audioEngine.getMasterClock();
-        const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+        const t = this.isPlaying ? clock.currentTime : 0;
         this.positionWrapper(container, trackWrapper, t);
       };
       trackWrapper.appendChild(waveformImg);
@@ -496,7 +498,7 @@ class MusicPlayerApp {
         this.trackImageInfo.set(track.id, { imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
         // Recompute position after image metrics are available
         const clock = this.audioEngine.getMasterClock();
-        const t = this.videoManager.isAnyPlaying() ? clock.currentTime : 0;
+        const t = this.isPlaying ? clock.currentTime : 0;
         this.positionWrapper(container, trackWrapper, t);
       };
       trackWrapper.appendChild(spectrogramImg);

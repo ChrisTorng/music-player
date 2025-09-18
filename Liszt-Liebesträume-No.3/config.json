@@ -10,7 +10,8 @@
           "url": "https://www.youtube.com/watch?v=H7K-8hTn13s",
           // "type": "mp4",
           // "url": "home/video/home.mp4",
-          "label": "Home Performance"
+          "label": "Home Performance",
+          "offsetSeconds": 0
         },
         {
           "id": "home_v2", 
@@ -18,7 +19,8 @@
           "url": "https://www.youtube.com/watch?v=zievs16r23c",
           // "type": "mp4",
           // "url": "home/video/home Ableton Live.mp4",
-          "label": "Ableton Live Recording"
+          "label": "Ableton Live Recording",
+          "offsetSeconds": 0
         }
       ],
       "audioGroups": [
@@ -110,19 +112,22 @@
           "id": "midi_v1",
           "type": "mp4", 
           "url": "home-midi/video/home-midi.mp4",
-          "label": "MIDI Performance"
+          "label": "MIDI Performance",
+          "offsetSeconds": 0
         },
         {
           "id": "midi_v2",
           "type": "mp4",
           "url": "home-midi/video/home-midi-modified.mp4", 
-          "label": "Modified MIDI"
+          "label": "Modified MIDI",
+          "offsetSeconds": 0
         },
         {
           "id": "midi_v3",
           "type": "mp4",
           "url": "home-midi/video/home-midi-ableton-live.mp4",
-          "label": "Ableton Live"
+          "label": "Ableton Live",
+          "offsetSeconds": 0
         }
       ],
       "audioGroups": [
@@ -201,7 +206,8 @@
           "url": "https://www.youtube.com/watch?v=OWroidHfscM",
           // "type": "mp4",
           // "url": "church/video/Liszt, Libestraume No.3 Church Performance.mp4",
-          "label": "Church Performance"
+          "label": "Church Performance",
+          "offsetSeconds": 0.4
         },
         {
           "id": "church_v1",
@@ -209,7 +215,8 @@
           "url": "https://www.youtube.com/watch?v=YDjoDKCRteY",
           // "type": "mp4",
           // "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
-          "label": "Church Ableton Live"
+          "label": "Church Ableton Live",
+          "offsetSeconds": 0.4
         }
       ],
       "audioGroups": [

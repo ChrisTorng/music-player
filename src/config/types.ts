@@ -3,6 +3,11 @@ export interface VideoSource {
   type: 'mp4' | 'youtube';
   url: string;
   label: string;
+  /**
+   * Optional playback offset in seconds. Positive values jump ahead in the video,
+   * negative values delay video start relative to the master audio clock.
+   */
+  offsetSeconds?: number;
 }
 
 export interface AudioTrack {

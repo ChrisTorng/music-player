@@ -10,6 +10,9 @@ export class VideoManager {
   private topVideoSource: VideoSource | null = null;
   private bottomVideoSource: VideoSource | null = null;
 
+  private pendingPlayTimeouts: Partial<Record<'top' | 'bottom', number>> = {};
+  private playRequested: boolean = false;
+
   private onTimeUpdate?: (currentTime: number, source: 'top' | 'bottom') => void;
   private onPlay?: (source: 'top' | 'bottom') => void;
   private onPause?: (source: 'top' | 'bottom') => void;
@@ -27,6 +30,19 @@ export class VideoManager {
     }
     if (bottomContainer) {
       bottomContainer.classList.add('hidden');
+    }
+  }
+
+  private getOffsetFor(position: 'top' | 'bottom'): number {
+    const source = position === 'top' ? this.topVideoSource : this.bottomVideoSource;
+    return source?.offsetSeconds ?? 0;
+  }
+
+  private clearPendingPlay(position: 'top' | 'bottom'): void {
+    const timeoutId = this.pendingPlayTimeouts[position];
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+      delete this.pendingPlayTimeouts[position];
     }
   }
 
@@ -133,6 +149,7 @@ export class VideoManager {
   unloadVideo(position: 'top' | 'bottom'): void {
     const containerId = position === 'top' ? 'top-video-container' : 'bottom-video-container';
     const playerId = position === 'top' ? 'top-video-player' : 'bottom-video-player';
+    this.clearPendingPlay(position);
     
     if (position === 'top' && this.topPlayer) {
       this.topPlayer.destroy();
@@ -162,20 +179,76 @@ export class VideoManager {
     }
   }
 
-  async playAll(): Promise<void> {
+  private applySeekWithOffset(position: 'top' | 'bottom', player: VideoPlayer, baseTime: number): void {
+    const offset = this.getOffsetFor(position);
+    const targetTime = baseTime + offset;
+    player.seek(targetTime < 0 ? 0 : targetTime);
+  }
+
+  private async playWithOffset(
+    position: 'top' | 'bottom',
+    player: VideoPlayer,
+    masterTime: number,
+    getMasterTime: () => number
+  ): Promise<void> {
+    const offset = this.getOffsetFor(position);
+    const desiredTime = masterTime + offset;
+
+    this.clearPendingPlay(position);
+    this.applySeekWithOffset(position, player, masterTime);
+
+    if (desiredTime < 0) {
+      player.pause();
+      const waitMs = Math.max(0, Math.round(Math.abs(desiredTime) * 1000));
+      const timeoutId = window.setTimeout(async () => {
+        delete this.pendingPlayTimeouts[position];
+        if (!this.playRequested) return;
+
+        const currentMaster = getMasterTime();
+        this.applySeekWithOffset(position, player, currentMaster);
+        if (currentMaster + offset < 0) {
+          // Master clock still not reached offset; reschedule a shorter delay.
+          await this.playWithOffset(position, player, currentMaster, getMasterTime);
+          return;
+        }
+
+        try {
+          await player.play();
+        } catch (error) {
+          console.error(`Video play error (${position}):`, error);
+        }
+      }, waitMs);
+      this.pendingPlayTimeouts[position] = timeoutId;
+      return;
+    }
+
+    try {
+      await player.play();
+    } catch (error) {
+      console.error(`Video play error (${position}):`, error);
+      throw error;
+    }
+  }
+
+  async playAll(masterTime: number, getMasterTime?: () => number): Promise<void> {
+    this.playRequested = true;
+    const resolveMasterTime = getMasterTime ?? (() => masterTime);
     const promises: Promise<void>[] = [];
     
     if (this.topPlayer) {
-      promises.push(this.topPlayer.play());
+      promises.push(this.playWithOffset('top', this.topPlayer, masterTime, resolveMasterTime));
     }
     if (this.bottomPlayer) {
-      promises.push(this.bottomPlayer.play());
+      promises.push(this.playWithOffset('bottom', this.bottomPlayer, masterTime, resolveMasterTime));
     }
 
     await Promise.all(promises);
   }
 
   pauseAll(): void {
+    this.playRequested = false;
+    this.clearPendingPlay('top');
+    this.clearPendingPlay('bottom');
     if (this.topPlayer) {
       this.topPlayer.pause();
     }
@@ -186,10 +259,10 @@ export class VideoManager {
 
   seekAll(time: number): void {
     if (this.topPlayer) {
-      this.topPlayer.seek(time);
+      this.applySeekWithOffset('top', this.topPlayer, time);
     }
     if (this.bottomPlayer) {
-      this.bottomPlayer.seek(time);
+      this.applySeekWithOffset('bottom', this.bottomPlayer, time);
     }
   }
 
@@ -213,7 +286,11 @@ export class VideoManager {
   isAnyPlaying(): boolean {
     const topPlaying = this.topPlayer ? !this.topPlayer.isPaused() : false;
     const bottomPlaying = this.bottomPlayer ? !this.bottomPlayer.isPaused() : false;
-    return topPlaying || bottomPlaying;
+    const pending = Object.keys(this.pendingPlayTimeouts).some(position => {
+      const timeoutId = this.pendingPlayTimeouts[position as 'top' | 'bottom'];
+      return timeoutId !== undefined;
+    });
+    return topPlaying || bottomPlaying || pending;
   }
 
   areAllPaused(): boolean {
