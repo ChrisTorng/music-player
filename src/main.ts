@@ -14,6 +14,7 @@ class MusicPlayerApp {
   private cursorRaf: number | null = null;
   private trackImageInfo: Map<string, { imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null; wrapperEl: HTMLDivElement | null }>;
   private pieceName: string = '';
+  private pendingMediaLoads = 0;
 
   constructor() {
     this.configLoader = new ConfigLoader();
@@ -158,10 +159,18 @@ class MusicPlayerApp {
       const t = this.isPlaying ? clock.currentTime : 0;
       this.updateAllVisualsPosition(t);
     });
+
+    // Ensure initial control state reflects loading status
+    this.updatePlayPauseButton();
   }
 
   private async togglePlayPause(): Promise<void> {
     try {
+      if (!this.isPlaying && this.isMediaLoading()) {
+        // Still loading media; ignore accidental clicks.
+        return;
+      }
+
       if (this.isPlaying) {
         // Pause both video and audio
         this.videoManager.pauseAll();
@@ -198,7 +207,11 @@ class MusicPlayerApp {
     if (playPauseBtn) {
       const isPlaying = this.isPlaying || this.videoManager.isAnyPlaying();
       playPauseBtn.textContent = isPlaying ? '⏸️ Pause' : '▶️ Play';
+      const shouldDisable = this.isMediaLoading() && !this.isPlaying;
+      (playPauseBtn as HTMLButtonElement).disabled = shouldDisable;
     }
+
+    this.setDropdownsDisabled(this.isPlaying || this.videoManager.isAnyPlaying());
   }
 
   private switchToTab(tabId: string): void {
@@ -288,11 +301,13 @@ class MusicPlayerApp {
     if (!topVideoSelect || !bottomVideoSelect || !this.currentTab) return;
     
     try {
+      const loadTasks: Promise<void>[] = [];
+
       // Handle top video
       if (topVideoSelect.value) {
         const topVideo = this.currentTab.videos.find(v => v.id === topVideoSelect.value);
         if (topVideo) {
-          await this.videoManager.loadTopVideo(topVideo);
+          loadTasks.push(this.trackMediaLoad(() => this.videoManager.loadTopVideo(topVideo)));
         }
       } else {
         this.videoManager.unloadVideo('top');
@@ -302,10 +317,14 @@ class MusicPlayerApp {
       if (bottomVideoSelect.value) {
         const bottomVideo = this.currentTab.videos.find(v => v.id === bottomVideoSelect.value);
         if (bottomVideo) {
-          await this.videoManager.loadBottomVideo(bottomVideo);
+          loadTasks.push(this.trackMediaLoad(() => this.videoManager.loadBottomVideo(bottomVideo)));
         }
       } else {
         this.videoManager.unloadVideo('bottom');
+      }
+
+      if (loadTasks.length) {
+        await Promise.all(loadTasks);
       }
       
     } catch (error) {
@@ -597,13 +616,15 @@ class MusicPlayerApp {
     const selectedGroup = this.currentTab.audioGroups.find(g => g.id === audioGroupSelect.value);
     if (!selectedGroup) return;
 
-    for (const t of selectedGroup.tracks) {
-      try {
-        await this.audioEngine.loadAudioTrack(t.id, t.url);
-      } catch (e) {
-        console.error(`Failed to load audio track ${t.id}`, e);
+    await this.trackMediaLoad(async () => {
+      for (const t of selectedGroup.tracks) {
+        try {
+          await this.audioEngine.loadAudioTrack(t.id, t.url);
+        } catch (e) {
+          console.error(`Failed to load audio track ${t.id}`, e);
+        }
       }
-    }
+    });
   }
 
   private parseRoutingValue(value: string): { type: 'audio' | 'video'; id?: string; position?: 'top' | 'bottom' } | null {
@@ -719,7 +740,7 @@ class MusicPlayerApp {
     }
     
     // Update dependent UI elements
-    this.updateVideoPlayers();
+    void this.updateVideoPlayers();
     this.updateAudioTracks();
     this.updateChannelSelectors();
     
@@ -743,6 +764,37 @@ class MusicPlayerApp {
       }
       this.applyRoutingFromSelectors();
     }, 100);
+  }
+
+  private beginMediaLoad(): void {
+    this.pendingMediaLoads += 1;
+    this.updatePlayPauseButton();
+  }
+
+  private endMediaLoad(): void {
+    if (this.pendingMediaLoads > 0) {
+      this.pendingMediaLoads -= 1;
+    }
+    this.updatePlayPauseButton();
+  }
+
+  private isMediaLoading(): boolean {
+    return this.pendingMediaLoads > 0;
+  }
+
+  private async trackMediaLoad<T>(load: () => Promise<T>): Promise<T> {
+    this.beginMediaLoad();
+    try {
+      return await load();
+    } finally {
+      this.endMediaLoad();
+    }
+  }
+
+  private setDropdownsDisabled(disabled: boolean): void {
+    document.querySelectorAll('select').forEach((element) => {
+      (element as HTMLSelectElement).disabled = disabled;
+    });
   }
 }
 

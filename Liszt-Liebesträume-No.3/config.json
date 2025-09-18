@@ -11,7 +11,7 @@
           // "type": "mp4",
           // "url": "home/video/home.mp4",
           "label": "Home Performance",
-          "offsetSeconds": 0
+          "offsetSeconds": 0.3
         },
         {
           "id": "home_v2", 
@@ -20,7 +20,7 @@
           // "type": "mp4",
           // "url": "home/video/home Ableton Live.mp4",
           "label": "Ableton Live Recording",
-          "offsetSeconds": 0
+          "offsetSeconds": 0.5
         }
       ],
       "audioGroups": [
@@ -207,7 +207,7 @@
           // "type": "mp4",
           // "url": "church/video/Liszt, Libestraume No.3 Church Performance.mp4",
           "label": "Church Performance",
-          "offsetSeconds": 0.4
+          "offsetSeconds": 0.3
         },
         {
           "id": "church_v1",
@@ -216,7 +216,7 @@
           // "type": "mp4",
           // "url": "church/video/Liszt, Liebesträume No.3 Church MIDI - Ableton Live.mp4",
           "label": "Church Ableton Live",
-          "offsetSeconds": 0.4
+          "offsetSeconds": 0.3
         }
       ],
       "audioGroups": [
