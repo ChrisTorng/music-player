@@ -653,6 +653,9 @@ class MusicPlayerApp {
     if (this.cursorRaf !== null) cancelAnimationFrame(this.cursorRaf);
     const tick = () => {
       const clock = this.audioEngine.getMasterClock();
+      if (this.isPlaying) {
+        this.videoManager.syncToMaster(clock.currentTime);
+      }
       document.querySelectorAll('.track-visuals').forEach((containerEl) => {
         const container = containerEl as HTMLElement;
         const parent = container.closest('.audio-track') as HTMLElement | null;
