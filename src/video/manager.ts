@@ -309,6 +309,9 @@ export class VideoManager {
 
     const activePlayers = this.getActivePlayers();
     activePlayers.forEach(({ position, player }) => {
+      if (player.isEnded()) {
+        return;
+      }
       const offset = this.getOffsetFor(position);
       const targetTime = this.calculateTargetTime(position, masterTime);
       const current = player.getCurrentTime();
@@ -316,13 +319,17 @@ export class VideoManager {
       const drift = Math.abs(alignedCurrent - masterTime);
 
       const driftThreshold = this.getSyncThreshold(player);
-      if (drift > driftThreshold) {
+      const duration = player.getDuration();
+      const hasDuration = typeof duration === 'number' && duration > 0;
+      const beyondDuration = hasDuration && targetTime >= duration;
+
+      if (!beyondDuration && drift > driftThreshold) {
         this.applySeekWithOffset(position, player, masterTime);
       }
 
       // If the player is paused (e.g., buffering) but the master clock
       // indicates playback should continue, attempt to resume.
-      if (targetTime >= 0 && player.isPaused()) {
+      if (!beyondDuration && targetTime >= 0 && player.isPaused() && !player.isEnded()) {
         // Avoid resuming when we still have a negative desired offset handled elsewhere.
         if (!this.pendingPlayTimeouts[position]) {
           player.play().catch((error) => {

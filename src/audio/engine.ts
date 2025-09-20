@@ -37,6 +37,7 @@ export class AudioEngine {
   private loading = new Map<string, Promise<void>>();
   private videoSources = new Map<'top' | 'bottom', LoadedVideoSource>();
   private currentRouting: AudioRouting = { left: null, right: null };
+  private onPlaybackEnded?: () => void;
   
   private masterClock: { currentTime: number; isPlaying: boolean } = {
     currentTime: 0,
@@ -311,20 +312,27 @@ export class AudioEngine {
 
     // Stop existing source
     if (track.sourceNode) {
+      track.sourceNode.onended = null;
       track.sourceNode.stop();
       track.sourceNode.disconnect();
+      track.sourceNode = null;
+      track.isPlaying = false;
     }
 
     // Create new source
-    track.sourceNode = this.audioContext.createBufferSource();
-    track.sourceNode.buffer = track.buffer;
-    
+    const sourceNode = this.audioContext.createBufferSource();
+    sourceNode.buffer = track.buffer;
+
     // Connect to gain node
-    track.sourceNode.connect(track.gainNode);
-    
+    sourceNode.connect(track.gainNode);
+
     // Start playback
     const startTime = this.masterClock.currentTime;
-    track.sourceNode.start(0, startTime);
+    sourceNode.start(0, startTime);
+    sourceNode.onended = () => {
+      this.handleTrackEnded(id, sourceNode);
+    };
+    track.sourceNode = sourceNode;
     track.isPlaying = true;
   }
 
@@ -332,6 +340,7 @@ export class AudioEngine {
     const track = this.audioTracks.get(id);
     if (track && track.sourceNode) {
       try {
+        track.sourceNode.onended = null;
         track.sourceNode.stop();
       } catch (error) {
         // Ignore if already stopped
@@ -340,6 +349,40 @@ export class AudioEngine {
       track.sourceNode = null;
       track.isPlaying = false;
     }
+  }
+
+  private handleTrackEnded(id: string, sourceNode: AudioBufferSourceNode): void {
+    const track = this.audioTracks.get(id);
+    if (!track) return;
+
+    if (track.sourceNode !== sourceNode) {
+      // Source was replaced (e.g., due to seek); ignore this stale event.
+      return;
+    }
+
+    track.sourceNode = null;
+    track.isPlaying = false;
+
+    const anyPlaying = Array.from(this.audioTracks.values()).some(t => t.isPlaying);
+    if (anyPlaying) return;
+
+    if (this.audioContext && this.playStartContextTime !== null) {
+      const duration = this.getMasterAudioDuration();
+      if (duration !== null) {
+        this.masterClock.currentTime = duration;
+      } else {
+        const elapsed = this.audioContext.currentTime - this.playStartContextTime;
+        this.masterClock.currentTime = this.playStartOffset + Math.max(0, elapsed);
+      }
+    }
+
+    this.playStartContextTime = null;
+    this.masterClock.isPlaying = false;
+    this.onPlaybackEnded?.();
+  }
+
+  onPlaybackEndedCallback(callback: () => void): void {
+    this.onPlaybackEnded = callback;
   }
 
   setTrackVolume(id: string, volume: number): void {

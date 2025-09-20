@@ -15,6 +15,7 @@ class MusicPlayerApp {
   private trackImageInfo: Map<string, { imgEl: HTMLImageElement | null; spectEl: HTMLImageElement | null; wrapperEl: HTMLDivElement | null }>;
   private pieceName: string = '';
   private pendingMediaLoads = 0;
+  private playbackEnded: boolean = false;
 
   constructor() {
     this.configLoader = new ConfigLoader();
@@ -41,6 +42,7 @@ class MusicPlayerApp {
 
       // Prepare audio engine
       await this.audioEngine.initialize();
+      this.audioEngine.onPlaybackEndedCallback(() => this.handlePlaybackEnded());
       
       // Update UI
       this.updatePieceInfo(piece);
@@ -176,6 +178,7 @@ class MusicPlayerApp {
         this.videoManager.pauseAll();
         this.audioEngine.pauseAll();
         this.isPlaying = false;
+        this.playbackEnded = false;
       } else {
         // Require master audio duration; if unavailable, block playback
         const duration = this.audioEngine.getMasterAudioDuration();
@@ -183,6 +186,14 @@ class MusicPlayerApp {
           alert('No master audio duration available. Please select/load an audio track for routing before playing.');
           return;
         }
+
+        const clockBeforeStart = this.audioEngine.getMasterClock();
+        const reachedEnd = this.playbackEnded || (isFinite(clockBeforeStart.currentTime) && clockBeforeStart.currentTime >= duration - 0.01);
+        if (reachedEnd) {
+          this.seekTo(0);
+        }
+
+        this.playbackEnded = false;
         // Start audio first (master clock), then video
         await this.audioEngine.resume();
         await this.audioEngine.playAll();
@@ -212,6 +223,21 @@ class MusicPlayerApp {
     }
 
     this.setDropdownsDisabled(this.isPlaying || this.videoManager.isAnyPlaying());
+  }
+
+  private handlePlaybackEnded(): void {
+    this.isPlaying = false;
+    this.playbackEnded = true;
+    this.videoManager.pauseAll();
+    this.seekTo(0);
+    this.updatePlayPauseButton();
+  }
+
+  private seekTo(timeSec: number): void {
+    const clamped = Math.max(0, timeSec);
+    this.audioEngine.seekAll(clamped);
+    this.videoManager.seekAll(clamped);
+    this.updateAllVisualsPosition(clamped);
   }
 
   private switchToTab(tabId: string): void {
