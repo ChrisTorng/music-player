@@ -6,19 +6,19 @@
       "videos": [
         {
           "id": "home_v1",
-          "type": "youtube",
-          "url": "https://www.youtube.com/watch?v=H7K-8hTn13s",
-          // "type": "mp4",
-          // "url": "home/video/home.mp4",
+          // "type": "youtube",
+          // "url": "https://www.youtube.com/watch?v=H7K-8hTn13s",
+          "type": "mp4",
+          "url": "home/video/home.mp4",
           "label": "Home Performance",
           "offsetSeconds": 0.3
         },
         {
           "id": "home_v2", 
-          "type": "youtube",
-          "url": "https://www.youtube.com/watch?v=zievs16r23c",
-          // "type": "mp4",
-          // "url": "home/video/home Ableton Live.mp4",
+          // "type": "youtube",
+          // "url": "https://www.youtube.com/watch?v=zievs16r23c",
+          "type": "mp4",
+          "url": "home/video/home Ableton Live.mp4",
           "label": "Ableton Live Recording",
           "offsetSeconds": 0.5
         }

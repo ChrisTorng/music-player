@@ -1,0 +1,59 @@
+{
+  "tabs": [
+    {
+      "id": "sync-test",
+      "title": "Sync Test",
+      "videos": [
+        {
+          "id": "sync_video",
+          "type": "mp4",
+          "url": "test/video/sync_test_video_fixed.mp4",
+          "label": "Test Video",
+          "offsetSeconds": 0
+        },
+        {
+          "id": "sync_video2",
+          "type": "mp4",
+          "url": "test/video/sync_test_video_fixed.mp4",
+          "label": "Test Video2",
+          "offsetSeconds": 0
+        }
+      ],
+      "audioGroups": [
+        {
+          "id": "test_audio",
+          "label": "Test Audio",
+          "tracks": [
+            {
+              "id": "sync_audio",
+              "url": "test/audio/sync_test_audio_fixed.mp3",
+              "label": "Test Audio"
+            }
+          ]
+        }
+      ],
+      "score": {
+        "basePath": "score",
+        "entries": [],
+        "animation": {
+          "type": "slideUp",
+          "durationMs": 180,
+          "easing": "ease-out"
+        },
+        "preload": {
+          "ahead": 2
+        }
+      },
+      "defaults": {
+        "topVideoId": "sync_video",
+        "bottomVideoId": "sync_video2",
+        "audioGroupId": "test_audio",
+        "routing": {
+          "left": { "type": "audio", "id": "sync_audio" },
+          "right": { "type": "audio", "id": "sync_audio" }
+        }
+      }
+    }
+  ],
+  "defaultTab": "sync-test"
+}
