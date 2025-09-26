@@ -12,8 +12,6 @@ export class VideoManager {
 
   private pendingPlayTimeouts: Partial<Record<'top' | 'bottom', number>> = {};
   private playRequested: boolean = false;
-  private readonly nativeSyncThresholdSeconds = 0.05;
-  private readonly youtubeSyncThresholdSeconds = 1.0;
 
   private onTimeUpdate?: (currentTime: number, source: 'top' | 'bottom') => void;
   private onPlay?: (source: 'top' | 'bottom') => void;
@@ -192,10 +190,6 @@ export class VideoManager {
     player.seek(targetTime);
   }
 
-  private getSyncThreshold(player: VideoPlayer): number {
-    return player instanceof YouTubePlayer ? this.youtubeSyncThresholdSeconds : this.nativeSyncThresholdSeconds;
-  }
-
   private async playWithOffset(
     position: 'top' | 'bottom',
     player: VideoPlayer,
@@ -302,42 +296,6 @@ export class VideoManager {
       return timeoutId !== undefined;
     });
     return topPlaying || bottomPlaying || pending;
-  }
-
-  syncToMaster(masterTime: number): void {
-    if (!this.playRequested) return;
-
-    const activePlayers = this.getActivePlayers();
-    activePlayers.forEach(({ position, player }) => {
-      if (player.isEnded()) {
-        return;
-      }
-      const offset = this.getOffsetFor(position);
-      const targetTime = this.calculateTargetTime(position, masterTime);
-      const current = player.getCurrentTime();
-      const alignedCurrent = current - offset;
-      const drift = Math.abs(alignedCurrent - masterTime);
-
-      const driftThreshold = this.getSyncThreshold(player);
-      const duration = player.getDuration();
-      const hasDuration = typeof duration === 'number' && duration > 0;
-      const beyondDuration = hasDuration && targetTime >= duration;
-
-      if (!beyondDuration && drift > driftThreshold) {
-        this.applySeekWithOffset(position, player, masterTime);
-      }
-
-      // If the player is paused (e.g., buffering) but the master clock
-      // indicates playback should continue, attempt to resume.
-      if (!beyondDuration && targetTime >= 0 && player.isPaused() && !player.isEnded()) {
-        // Avoid resuming when we still have a negative desired offset handled elsewhere.
-        if (!this.pendingPlayTimeouts[position]) {
-          player.play().catch((error) => {
-            console.warn(`Video sync resume failed (${position}):`, error);
-          });
-        }
-      }
-    });
   }
 
   areAllPaused(): boolean {
