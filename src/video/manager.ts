@@ -241,16 +241,47 @@ export class VideoManager {
   async playAll(masterTime: number, getMasterTime?: () => number): Promise<void> {
     this.playRequested = true;
     const resolveMasterTime = getMasterTime ?? (() => masterTime);
-    const promises: Promise<void>[] = [];
-    
-    if (this.topPlayer) {
-      promises.push(this.playWithOffset('top', this.topPlayer, masterTime, resolveMasterTime));
-    }
-    if (this.bottomPlayer) {
-      promises.push(this.playWithOffset('bottom', this.bottomPlayer, masterTime, resolveMasterTime));
-    }
 
-    await Promise.all(promises);
+    // Check if we have any YouTube players that need extra delay handling
+    const hasYouTube = (this.topVideoSource?.type === 'youtube') ||
+                       (this.bottomVideoSource?.type === 'youtube');
+
+    if (hasYouTube) {
+      // Play all videos first and wait for them to start
+      const playPromises: Promise<void>[] = [];
+
+      if (this.topPlayer) {
+        playPromises.push(this.playWithOffset('top', this.topPlayer, masterTime, resolveMasterTime));
+      }
+      if (this.bottomPlayer) {
+        playPromises.push(this.playWithOffset('bottom', this.bottomPlayer, masterTime, resolveMasterTime));
+      }
+
+      await Promise.all(playPromises);
+
+      // After YouTube starts playing, re-sync all videos to account for startup delay
+      const currentMasterTime = resolveMasterTime();
+      console.log(`[VideoManager] YouTube sync: re-seeking to master time ${currentMasterTime}`);
+
+      if (this.topPlayer) {
+        this.applySeekWithOffset('top', this.topPlayer, currentMasterTime);
+      }
+      if (this.bottomPlayer) {
+        this.applySeekWithOffset('bottom', this.bottomPlayer, currentMasterTime);
+      }
+    } else {
+      // No YouTube, just play normally
+      const promises: Promise<void>[] = [];
+
+      if (this.topPlayer) {
+        promises.push(this.playWithOffset('top', this.topPlayer, masterTime, resolveMasterTime));
+      }
+      if (this.bottomPlayer) {
+        promises.push(this.playWithOffset('bottom', this.bottomPlayer, masterTime, resolveMasterTime));
+      }
+
+      await Promise.all(promises);
+    }
   }
 
   pauseAll(): void {

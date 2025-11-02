@@ -15,6 +15,7 @@ export class YouTubePlayer {
   private onPause?: () => void;
   private onEnded?: () => void;
   private timeUpdateInterval?: number;
+  private isWarmedUp: boolean = false;
 
   constructor(containerId: string, videoUrl: string) {
     this.containerId = containerId;
@@ -190,32 +191,128 @@ export class YouTubePlayer {
 
   async load(url: string): Promise<void> {
     this.videoId = this.extractVideoId(url);
-    
+    this.isWarmedUp = false;
+
     if (this.player && this.player.loadVideoById) {
       // Player already exists, just load new video
       this.player.loadVideoById(this.videoId);
-      return Promise.resolve();
+      await this.warmupPlayer();
     } else {
       // Initialize player for first time
       await this.loadYouTubeAPI();
-      return new Promise((resolve) => {
+      await new Promise((resolve) => {
         // Wait for player to be ready
         const checkReady = () => {
           if (this.player && this.player.getPlayerState) {
-            resolve();
+            resolve(undefined);
           } else {
             setTimeout(checkReady, 100);
           }
         };
         checkReady();
       });
+      await this.warmupPlayer();
     }
   }
 
+  /**
+   * Warmup player by starting playback briefly then pausing.
+   * This pre-buffers the video and reduces initial playback delay.
+   */
+  private async warmupPlayer(): Promise<void> {
+    if (!this.player || this.isWarmedUp) return;
+
+    console.log('[YouTubePlayer] Warming up player...');
+
+    return new Promise((resolve) => {
+      // Wait for video to be cued/buffering
+      const checkCued = () => {
+        const state = this.player?.getPlayerState();
+        if (state === window.YT.PlayerState.CUED ||
+            state === window.YT.PlayerState.PAUSED ||
+            state === window.YT.PlayerState.PLAYING) {
+
+          // Start playback briefly
+          this.player?.playVideo();
+
+          // Wait a short time for buffering to start
+          setTimeout(() => {
+            this.player?.pauseVideo();
+            this.player?.seekTo(0, true);
+            this.isWarmedUp = true;
+            console.log('[YouTubePlayer] Warmup complete');
+            resolve(undefined);
+          }, 200); // 200ms should be enough to start buffering
+        } else {
+          setTimeout(checkCued, 100);
+        }
+      };
+      checkCued();
+    });
+  }
+
   async play(): Promise<void> {
-    if (this.player && this.player.playVideo) {
-      this.player.playVideo();
+    if (!this.player || !this.player.playVideo) {
+      return Promise.reject(new Error('Player not ready'));
     }
+
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      let stateChangeHandler: ((event: any) => void) | null = null;
+      let timeout: number | null = null;
+
+      const cleanup = () => {
+        if (stateChangeHandler && this.player) {
+          // Note: YouTube API doesn't provide removeEventListener directly
+          // The event is managed through the events object in player creation
+        }
+        if (timeout !== null) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+      };
+
+      // Set timeout to prevent hanging (max 2 seconds)
+      timeout = window.setTimeout(() => {
+        cleanup();
+        const elapsed = Date.now() - startTime;
+        console.warn(`[YouTubePlayer] Play timeout after ${elapsed}ms, continuing anyway`);
+        resolve(undefined);
+      }, 2000);
+
+      // Check if already playing
+      const currentState = this.player.getPlayerState();
+      if (currentState === window.YT.PlayerState.PLAYING) {
+        cleanup();
+        resolve(undefined);
+        return;
+      }
+
+      // Monitor for PLAYING state
+      const checkPlaying = () => {
+        const state = this.player?.getPlayerState();
+        if (state === window.YT.PlayerState.PLAYING) {
+          cleanup();
+          const elapsed = Date.now() - startTime;
+          console.log(`[YouTubePlayer] Started playing after ${elapsed}ms`);
+          resolve(undefined);
+        } else if (state === window.YT.PlayerState.PAUSED ||
+                   state === window.YT.PlayerState.CUED ||
+                   state === window.YT.PlayerState.BUFFERING) {
+          // Still waiting, check again
+          setTimeout(checkPlaying, 50);
+        } else {
+          // Unexpected state, might be an error
+          setTimeout(checkPlaying, 50);
+        }
+      };
+
+      // Start playback
+      this.player.playVideo();
+
+      // Start monitoring
+      setTimeout(checkPlaying, 50);
+    });
   }
 
   pause(): void {
