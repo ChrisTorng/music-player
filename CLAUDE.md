@@ -13,6 +13,30 @@ The TypeScript application (described in PLAN.md) loads different pieces based o
 
 ## Development Commands
 
+### TypeScript Build & Development
+```bash
+# Install dependencies
+npm install
+
+# Build TypeScript (src/ → js/)
+npm run build
+
+# Watch mode (auto-rebuild on changes)
+npm run dev
+
+# Start local development server (default port 8000)
+npm run serve
+
+# Complete workflow (build + serve)
+npm start
+
+# Access the app
+# http://localhost:8000/?piece=Liszt-Liebesträume-No.3
+# http://localhost:8000/?piece=test&tab=test (minimal test piece)
+```
+
+**CRITICAL**: Never manually edit files in `js/` or `css/` directories - these are compiled outputs. Always edit source files in `src/` and run `npm run build`.
+
 ### Media Validation
 ```bash
 # List all media files for a specific piece
@@ -31,15 +55,16 @@ ffmpeg -v error -i <file> -f null -
 find <piece-folder> -name '*:Zone.Identifier' -delete
 ```
 
-### Audio Processing
+### Audio Processing (Optional - Legacy)
 ```bash
-# Generate waveform and spectrogram PNGs for all MP3s
+# Generate waveform and spectrogram PNGs for all MP3s (OPTIONAL)
+# NOTE: Visualizations are now generated dynamically in-browser by default
 ./scripts/gen-mp3-png.sh
 
 # Force regenerate existing PNGs
 ./scripts/gen-mp3-png.sh -f
 
-# Process specific directory  
+# Process specific directory
 ./scripts/gen-mp3-png.sh -r Liszt-Liebesträume-No.3/home/audio
 ```
 
@@ -81,12 +106,18 @@ Liszt-Liebesträume-No.3/
 - Avoid spaces in filenames when possible
 - Keep descriptive but consistent naming
 
-### Generated Assets
-The `gen-mp3-png.sh` script creates visualization assets:
-- `<basename>.waveform.png`: 4000x200 white waveform on transparent background
-- `<basename>.spectrogram.png`: 4000x200 magma colormap spectrogram
+### Generated Assets (Dynamic + Optional Static)
+**Primary Method (Dynamic)**: Waveform and spectrogram visualizations are generated in-browser at runtime:
+- Waveform: 4000×50 px (black background, white waveform)
+- Spectrogram: 4000×200 px (magma colormap, low frequencies at bottom)
+- No PNG files needed; generated from MP3 audio data using Web Audio API and Canvas
 
-## Architecture (Planned TypeScript App)
+**Optional Static Method**: The `gen-mp3-png.sh` script can create offline PNG assets for external use:
+- `<basename>.waveform.png`: 4000×50 px
+- `<basename>.spectrogram.png`: 4000×200 px
+- These are NOT used by the web application
+
+## Architecture
 
 ### Application Loading
 The app reads URL parameters to determine which piece to load:
@@ -95,15 +126,15 @@ The app reads URL parameters to determine which piece to load:
 - All media paths in config.json are relative to the piece folder
 - Future pieces can be added by creating new folders with config.json
 
-### Core Modules
-- `main.ts`: Entry point, URL parameter handling, piece loading, UI generation
-- `config/loader.ts`: Dynamic config.json loading and path resolution
-- `config/types.ts`: TypeScript interfaces for JSON configuration
-- `video/`: Native MP4 and YouTube iframe player controllers
-- `audio/engine.ts`: Web Audio API routing for left/right channel assignment
-- `visuals/`: Waveform and spectrogram PNG display with seek interaction
-- `sync/controller.ts`: Audio-master clock synchronization
-- `score/viewer.ts`: Sheet music display with slide-up animation
+### Core Modules (Implemented)
+- `src/main.ts`: Entry point, MusicPlayerApp class, URL parameter handling, piece loading, UI generation, playback control
+- `src/config/loader.ts`: Dynamic config.json loading and path resolution; supports JSONC (strips comments before parsing)
+- `src/config/types.ts`: TypeScript interfaces for JSON configuration (Config, Tab, VideoSource, AudioTrack, etc.)
+- `src/video/native.ts`: Native `<video>` element controller for MP4 playback
+- `src/video/youtube.ts`: YouTube IFrame Player API wrapper for video sync
+- `src/video/manager.ts`: Manages multiple video players and synchronization
+- `src/audio/engine.ts`: Web Audio API routing for left/right channel assignment, gain control, playback ended detection
+- `src/visual/renderer.ts`: Dynamic waveform and spectrogram generation from audio data using Canvas API
 
 ### Key Features
 - Multi-piece support via URL parameters
@@ -116,24 +147,51 @@ The app reads URL parameters to determine which piece to load:
 ## File Requirements
 
 - UTF-8 encoding for all text files
-- No build system - this is a media asset repository
+- TypeScript strict mode enabled (`tsconfig.json` with `strict: true`, `noImplicitAny: true`)
+- Compiled output: `src/` → `js/` (ES2020 modules, source maps included)
 - Git LFS recommended for large binaries: `git lfs track "*.mp4" "*.mp3" "*.png"`
 - Strip sensitive metadata from images before commit
+- `.gitignore` excludes `node_modules/` and large media files
 
-## Testing
+## Testing & Validation
 
-No formal unit tests. Validation involves:
-- Ensuring media files play correctly
-- Verifying expected durations and codecs (H.264/AAC for MP4, 44.1kHz for MP3)
-- Checking file integrity with ffmpeg
+No formal unit tests. Manual validation workflow:
+
+### Quick Test Setup
+```bash
+# Build and serve
+npm run build && npm run serve
+
+# Open test piece (minimal config for quick testing)
+http://localhost:8000/?piece=test&tab=test
+```
+
+The `test/` directory contains a minimal test piece with sync test media for quick validation.
+
+### Media Validation
+- Ensure media files play correctly in the browser
+- Verify expected durations and codecs (H.264/AAC for MP4, 44.1kHz for MP3)
+- Check file integrity: `ffmpeg -v error -i <file> -f null -`
+- Test audio/video synchronization with test media
+- Verify waveform/spectrogram rendering works correctly
+- Check that channel routing (left/right) functions as expected
 
 ## Important Notes
 
-- Media files are gitignored but PNG visualizations are tracked
-- Each piece's config.json uses relative paths from its own folder
-- The project supports both MP4 URLs and YouTube links in the planned app
-- CORS configuration required for cross-domain media access
-- Pure TypeScript implementation with no external frameworks planned
-- URL parameter `piece` determines which folder/config.json to load
- - Source of truth: edit `src/` (TypeScript) only. Do not hand-edit `js/`; run `npm run build` to regenerate compiled output.
- - Config loader supports JSONC (comments): comments in `config.json` are stripped at runtime before parsing.
+- **Source of truth**: Edit `src/` (TypeScript) only. Never manually edit `js/` or `css/` - run `npm run build` to regenerate compiled output
+- **Config format**: Supports JSONC (comments in `config.json` are stripped at runtime before parsing by `src/config/loader.ts`)
+- **Media paths**: All paths in config.json are relative to the piece folder
+- **URL routing**: `?piece=<folder-name>` determines which config to load; `&tab=<id>` selects the active tab
+- **Tab navigation**: Clicking tabs triggers full page reload with new URL parameters (no cross-tab state retention)
+- **CORS requirements**: Cross-domain MP4/MP3 requires `crossorigin="anonymous"` attribute and proper server headers
+- **Video support**: Both native MP4 (`<video>`) and YouTube (IFrame API) are implemented
+- **Audio routing**: Web Audio API handles left/right channel assignment from any audio source or video track
+- **Visualizations**: Dynamically generated in-browser; PNG files (if present) are ignored by the web app
+- **No framework dependencies**: Pure TypeScript with native Web APIs (Web Audio, Canvas, etc.)
+
+### Common Pitfalls
+- Forgetting to run `npm run build` after editing TypeScript files
+- Manually editing `js/` files (changes will be overwritten on next build)
+- Adding media files without updating the piece's `config.json`
+- CORS issues when loading media from different origins without proper headers
+- Attempting to route audio from YouTube videos (not supported - only screen sync works)
