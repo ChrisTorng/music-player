@@ -4,8 +4,10 @@ export interface VideoSource {
   url: string;
   label: string;
   /**
-   * Optional playback offset in seconds. Positive values jump ahead in the video,
-   * negative values delay video start relative to the master audio clock.
+   * Optional playback offset in seconds relative to the master audio clock.
+   * Positive values delay the video (video plays later than audio).
+   * Negative values advance the video (video plays ahead of audio).
+   * Example: offsetSeconds=1.0 means video time will be 1 second behind audio time.
    */
   offsetSeconds?: number;
 }

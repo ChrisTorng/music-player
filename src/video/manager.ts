@@ -181,7 +181,8 @@ export class VideoManager {
 
   private calculateTargetTime(position: 'top' | 'bottom', masterTime: number): number {
     const offset = this.getOffsetFor(position);
-    const targetTime = masterTime + offset;
+    // Subtract offset: positive offset delays video, negative offset advances video
+    const targetTime = masterTime - offset;
     return targetTime < 0 ? 0 : targetTime;
   }
 
@@ -197,12 +198,14 @@ export class VideoManager {
     getMasterTime: () => number
   ): Promise<void> {
     const offset = this.getOffsetFor(position);
-    const desiredTime = masterTime + offset;
+    // Positive offset delays video, so desiredTime = masterTime - offset
+    const desiredTime = masterTime - offset;
 
     this.clearPendingPlay(position);
     this.applySeekWithOffset(position, player, masterTime);
 
     if (desiredTime < 0) {
+      // Video hasn't started yet due to positive offset (delay)
       player.pause();
       const waitMs = Math.max(0, Math.round(Math.abs(desiredTime) * 1000));
       const timeoutId = window.setTimeout(async () => {
@@ -211,8 +214,8 @@ export class VideoManager {
 
         const currentMaster = getMasterTime();
         this.applySeekWithOffset(position, player, currentMaster);
-        if (currentMaster + offset < 0) {
-          // Master clock still not reached offset; reschedule a shorter delay.
+        if (currentMaster - offset < 0) {
+          // Master clock still hasn't reached video start time; reschedule
           await this.playWithOffset(position, player, currentMaster, getMasterTime);
           return;
         }
