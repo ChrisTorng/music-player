@@ -74,7 +74,14 @@ export class NativeVideoPlayer {
   }
 
   seek(time: number): void {
-    this.video.currentTime = Math.max(0, Math.min(time, this.video.duration || 0));
+    const duration = this.video.duration;
+    let target = Math.max(0, time);
+    if (Number.isFinite(duration) && duration > 0) {
+      target = Math.min(target, duration);
+    }
+    const beforeCurrentTime = this.video.currentTime;
+    this.video.currentTime = target;
+    console.log(`Seek from ${beforeCurrentTime} to ${this.video.currentTime} for ${time}`);
   }
 
   getCurrentTime(): number {
