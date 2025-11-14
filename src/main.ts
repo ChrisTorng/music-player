@@ -194,11 +194,26 @@ class MusicPlayerApp {
         }
 
         this.playbackEnded = false;
-        // Start audio first (master clock), then video
+
+        // CRITICAL: Get current audio time BEFORE starting playback
         await this.audioEngine.resume();
+        const pausedTime = this.audioEngine.getMasterClock().currentTime;
+        console.log(`[Main] Resume playback from pausedTime=${pausedTime.toFixed(2)}`);
+
+        // SIMPLIFIED APPROACH (matching test page success):
+        // Don't seek in paused state - seekable range may be [0.00-0.00]
+        // Instead, let play() handle the seek after video starts
+
+        // Step 1: Start video playback with target time
+        // play() will seek after buffering starts and WAIT for completion
+        console.log('[Main] Starting video playback with target time');
+        await this.videoManager.playAll(pausedTime, () => this.audioEngine.getMasterClock().currentTime);
+        console.log('[Main] Video playback started and seeked successfully');
+
+        // Step 2: Start audio playback (videos are already at correct position)
+        console.log('[Main] Starting audio playback');
         await this.audioEngine.playAll();
-        const clock = this.audioEngine.getMasterClock();
-        await this.videoManager.playAll(clock.currentTime, () => this.audioEngine.getMasterClock().currentTime);
+
         this.isPlaying = true;
         this.startCursorLoop();
       }

@@ -7,3 +7,4 @@
 # *.spectrogram.png
 js/
 node_modules/
+test-results/

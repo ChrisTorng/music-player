@@ -251,10 +251,12 @@ export class YouTubePlayer {
     });
   }
 
-  async play(): Promise<void> {
+  async play(seekTo?: number): Promise<void> {
     if (!this.player || !this.player.playVideo) {
       return Promise.reject(new Error('Player not ready'));
     }
+
+    console.log(`[YouTubePlayer] play() called with seekTo=${seekTo?.toFixed(2)}`);
 
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
@@ -284,6 +286,14 @@ export class YouTubePlayer {
       const currentState = this.player.getPlayerState();
       if (currentState === window.YT.PlayerState.PLAYING) {
         cleanup();
+        // If seekTo specified, seek after already playing
+        if (seekTo !== undefined) {
+          const currentTime = this.player.getCurrentTime();
+          if (Math.abs(currentTime - seekTo) > 0.1) {
+            console.log(`[YouTubePlayer] Seeking to ${seekTo.toFixed(2)} (was at ${currentTime.toFixed(2)})`);
+            this.player.seekTo(seekTo, true);
+          }
+        }
         resolve(undefined);
         return;
       }
@@ -295,6 +305,16 @@ export class YouTubePlayer {
           cleanup();
           const elapsed = Date.now() - startTime;
           console.log(`[YouTubePlayer] Started playing after ${elapsed}ms`);
+
+          // If seekTo specified, seek after play starts
+          if (seekTo !== undefined) {
+            const currentTime = this.player.getCurrentTime();
+            if (Math.abs(currentTime - seekTo) > 0.1) {
+              console.log(`[YouTubePlayer] Seeking to ${seekTo.toFixed(2)} after play started (was at ${currentTime.toFixed(2)})`);
+              this.player.seekTo(seekTo, true);
+            }
+          }
+
           resolve(undefined);
         } else if (state === window.YT.PlayerState.PAUSED ||
                    state === window.YT.PlayerState.CUED ||

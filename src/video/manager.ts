@@ -187,7 +187,9 @@ export class VideoManager {
   }
 
   private applySeekWithOffset(position: 'top' | 'bottom', player: VideoPlayer, masterTime: number): void {
+    const offset = this.getOffsetFor(position);
     const targetTime = this.calculateTargetTime(position, masterTime);
+    console.log(`[VideoManager] applySeekWithOffset(${position}) | masterTime=${masterTime.toFixed(2)} offset=${offset.toFixed(2)} targetTime=${targetTime.toFixed(2)}`);
     player.seek(targetTime);
   }
 
@@ -200,9 +202,12 @@ export class VideoManager {
     const offset = this.getOffsetFor(position);
     // Positive offset delays video, so desiredTime = masterTime - offset
     const desiredTime = masterTime - offset;
+    const targetTime = this.calculateTargetTime(position, masterTime);
 
     this.clearPendingPlay(position);
-    this.applySeekWithOffset(position, player, masterTime);
+    // Don't seek in paused state - seekable range may be empty
+    // Let play() handle the seek after video starts buffering
+    // this.applySeekWithOffset(position, player, masterTime);  ← Removed
 
     if (desiredTime < 0) {
       // Video hasn't started yet due to positive offset (delay)
@@ -213,7 +218,9 @@ export class VideoManager {
         if (!this.playRequested) return;
 
         const currentMaster = getMasterTime();
-        this.applySeekWithOffset(position, player, currentMaster);
+        const currentTarget = this.calculateTargetTime(position, currentMaster);
+        // Don't seek in paused state
+        // this.applySeekWithOffset(position, player, currentMaster);  ← Removed
         if (currentMaster - offset < 0) {
           // Master clock still hasn't reached video start time; reschedule
           await this.playWithOffset(position, player, currentMaster, getMasterTime);
@@ -221,7 +228,8 @@ export class VideoManager {
         }
 
         try {
-          await player.play();
+          // Pass target time to play() for post-play seek if needed
+          await player.play(currentTarget);
         } catch (error) {
           console.error(`Video play error (${position}):`, error);
         }
@@ -231,7 +239,9 @@ export class VideoManager {
     }
 
     try {
-      await player.play();
+      // Pass target time to play() for post-play seek if needed
+      console.log(`[VideoManager] Starting play for ${position} with targetTime=${targetTime.toFixed(2)}`);
+      await player.play(targetTime);
     } catch (error) {
       console.error(`Video play error (${position}):`, error);
       throw error;
@@ -297,6 +307,7 @@ export class VideoManager {
   }
 
   seekAll(time: number): void {
+    console.log(`[VideoManager] seekAll(${time.toFixed(2)}) called`);
     if (this.topPlayer) {
       this.applySeekWithOffset('top', this.topPlayer, time);
     }

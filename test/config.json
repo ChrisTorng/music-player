@@ -7,7 +7,8 @@
         {
           "id": "sync_video",
           "type": "mp4",
-          "url": "test/video/sync_test_video_fixed.mp4",
+          // "url": "test/video/sync_test_video_fixed.mp4",
+          "url": "../Liszt-Liebesträume-No.3/home/video/home.mp4",
           "label": "Test Video",
           "offsetSeconds": 0
         },
@@ -15,6 +16,7 @@
           "id": "sync_video2",
           "type": "mp4",
           "url": "test/video/sync_test_video_fixed.mp4",
+          // "url": "../Liszt-Liebesträume-No.3/home/video/home Ableton Live.mp4",
           "label": "Test Video2",
           "offsetSeconds": 0
         }

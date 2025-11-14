@@ -60,13 +60,70 @@ export class NativeVideoPlayer {
     });
   }
 
-  async play(): Promise<void> {
+  async play(seekTo?: number): Promise<void> {
+    const beforeTime = this.video.currentTime;
+    const duration = this.video.duration;
+    const readyState = this.video.readyState;
+    console.log(`[NativeVideo] play() called | currentTime=${beforeTime.toFixed(2)} duration=${duration?.toFixed(2)} readyState=${readyState} seekTo=${seekTo?.toFixed(2)}`);
     try {
       await this.video.play();
+      let afterTime = this.video.currentTime;
+
+      // If seekTo specified and current position is wrong, wait for buffering then seek
+      if (seekTo !== undefined && Math.abs(afterTime - seekTo) > 0.1) {
+        console.log(`[NativeVideo] Need to seek to ${seekTo.toFixed(2)} after buffering (currently at ${afterTime.toFixed(2)})`);
+        // CRITICAL: Must await to ensure seek completes before audio starts
+        await this.seekWhenBuffered(seekTo);
+        afterTime = this.video.currentTime;
+      }
+
+      console.log(`[NativeVideo] play() success | currentTime=${afterTime.toFixed(2)} (changed: ${(afterTime - beforeTime).toFixed(2)}s)`);
     } catch (error) {
-      console.error('Video play error:', error);
+      console.error('[NativeVideo] Video play error:', error);
       throw error;
     }
+  }
+
+  private async seekWhenBuffered(targetTime: number): Promise<void> {
+    const maxAttempts = 30; // Max 3 seconds (30 * 100ms)
+
+    for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+      // Check if target time is in seekable range
+      const seekable = this.video.seekable;
+      let isSeekable = false;
+      for (let i = 0; i < seekable.length; i++) {
+        if (targetTime >= seekable.start(i) && targetTime <= seekable.end(i)) {
+          isSeekable = true;
+          break;
+        }
+      }
+
+      if (isSeekable) {
+        console.log(`[NativeVideo] Buffer ready, seeking to ${targetTime.toFixed(2)} (attempt ${attempts})`);
+        this.video.currentTime = targetTime;
+        const actualResult = this.video.currentTime;
+
+        if (Math.abs(actualResult - targetTime) < 0.1) {
+          console.log(`[NativeVideo] Seek successful: ${actualResult.toFixed(2)}`);
+          return;
+        } else if (Math.abs(actualResult - targetTime) < 1.0) {
+          console.log(`[NativeVideo] Seek partially successful: ${actualResult.toFixed(2)} (target was ${targetTime.toFixed(2)})`);
+          return; // Close enough
+        } else {
+          console.warn(`[NativeVideo] Seek failed: ${actualResult.toFixed(2)} != ${targetTime.toFixed(2)}`);
+        }
+      } else {
+        const ranges = Array.from({ length: seekable.length }, (_, i) =>
+          `[${seekable.start(i).toFixed(2)}-${seekable.end(i).toFixed(2)}]`
+        ).join(', ');
+        console.log(`[NativeVideo] Waiting for buffer... (attempt ${attempts}, seekable: ${ranges || 'none'})`);
+      }
+
+      // Wait before next attempt
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.error(`[NativeVideo] Buffer timeout after ${maxAttempts} attempts. Target ${targetTime.toFixed(2)} not seekable.`);
   }
 
   pause(): void {
@@ -79,9 +136,41 @@ export class NativeVideoPlayer {
     if (Number.isFinite(duration) && duration > 0) {
       target = Math.min(target, duration);
     }
+
     const beforeCurrentTime = this.video.currentTime;
+    const readyState = this.video.readyState;
+    const paused = this.video.paused;
+
+    // Check if target time is within seekable ranges
+    const seekable = this.video.seekable;
+    let isSeekable = false;
+    for (let i = 0; i < seekable.length; i++) {
+      if (target >= seekable.start(i) && target <= seekable.end(i)) {
+        isSeekable = true;
+        break;
+      }
+    }
+
+    if (!isSeekable && seekable.length > 0) {
+      console.warn(`[NativeVideo] Target time ${target.toFixed(2)} not in seekable range. Seekable ranges:`,
+        Array.from({ length: seekable.length }, (_, i) => `[${seekable.start(i).toFixed(2)}-${seekable.end(i).toFixed(2)}]`).join(', '));
+      // If not seekable, try to seek to the nearest seekable position
+      if (target > seekable.end(seekable.length - 1)) {
+        target = seekable.end(seekable.length - 1);
+      } else if (target < seekable.start(0)) {
+        target = seekable.start(0);
+      }
+    }
+
     this.video.currentTime = target;
-    console.log(`Seek from ${beforeCurrentTime} to ${this.video.currentTime} for ${time}`);
+
+    const actualResult = this.video.currentTime;
+    console.log(`[NativeVideo] Seek from ${beforeCurrentTime.toFixed(2)} to ${target.toFixed(2)} (requested ${time.toFixed(2)}) | duration=${duration?.toFixed(2)} readyState=${readyState} paused=${paused} seekable=${isSeekable} | actualResult=${actualResult.toFixed(2)}`);
+
+    // If seek failed (common with paused videos that lost buffer), retry after a delay
+    if (Math.abs(actualResult - target) > 0.1 && target > 0) {
+      console.warn(`[NativeVideo] Seek failed (actualResult=${actualResult.toFixed(2)} != target=${target.toFixed(2)}), will retry during play`);
+    }
   }
 
   getCurrentTime(): number {
