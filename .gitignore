@@ -1,4 +1,4 @@
-#iszt-Liebesträume-No.3/
+# Liszt-Liebesträume-No.3/
 *.mp4
 *.mp3
 *.mid
@@ -8,3 +8,4 @@
 js/
 node_modules/
 test-results/
+playwright-report/

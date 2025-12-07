@@ -18,7 +18,7 @@
           "url": "test/video/sync_test_video_fixed.mp4",
           // "url": "../Liszt-Liebesträume-No.3/home/video/home Ableton Live.mp4",
           "label": "Test Video2",
-          "offsetSeconds": 0
+          "offsetSeconds": 2
         }
       ],
       "audioGroups": [

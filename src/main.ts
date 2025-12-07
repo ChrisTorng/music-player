@@ -2,7 +2,6 @@ import { ConfigLoader } from './config/loader.js';
 import { Config, Tab } from './config/types.js';
 import { VideoManager } from './video/manager.js';
 import { AudioEngine } from './audio/engine.js';
-import { renderWaveformPng, renderSpectrogramPng } from './visual/renderer.js';
 
 class MusicPlayerApp {
   private config: Config | null = null;
@@ -60,18 +59,6 @@ class MusicPlayerApp {
     }
   }
 
-  // ---- Dynamic visual generation helpers ----
-  private async ensureTrackBuffer(trackId: string, url: string): Promise<AudioBuffer> {
-    // Try existing buffer in engine first
-    let buf = this.audioEngine.getTrackBuffer(trackId);
-    if (buf) return buf;
-    // If not loaded yet, load via engine to leverage same AudioContext
-    await this.audioEngine.loadAudioTrack(trackId, url);
-    buf = this.audioEngine.getTrackBuffer(trackId);
-    if (!buf) throw new Error('Failed to decode audio buffer');
-    return buf;
-  }
-
   private showLoading(show: boolean): void {
     const loadingEl = document.getElementById('loading');
     if (loadingEl) {
@@ -97,6 +84,22 @@ class MusicPlayerApp {
         this.init();
       };
     }
+  }
+
+  private deriveVisualUrl(trackUrl: string, kind: 'waveform' | 'spectrogram'): string {
+    const suffix = kind === 'waveform' ? '.waveform.png' : '.spectrogram.png';
+    const queryIndex = trackUrl.indexOf('?');
+    const hashIndex = trackUrl.indexOf('#');
+    const endIndex = Math.min(
+      queryIndex === -1 ? trackUrl.length : queryIndex,
+      hashIndex === -1 ? trackUrl.length : hashIndex
+    );
+    const base = trackUrl.slice(0, endIndex);
+    const tail = trackUrl.slice(endIndex);
+    const lastSlash = base.lastIndexOf('/');
+    const lastDot = base.lastIndexOf('.');
+    const withSuffix = lastDot > lastSlash ? `${base.slice(0, lastDot)}${suffix}` : `${base}${suffix}`;
+    return `${withSuffix}${tail}`;
   }
 
   private updatePieceInfo(pieceName: string): void {
@@ -482,9 +485,12 @@ class MusicPlayerApp {
     const trackElement = document.querySelector(`[data-track-id="${trackId}"]`);
     
     if (!visualsContainer || !trackElement) return;
-    
     const waveformToggle = trackElement.querySelector('.waveform-toggle') as HTMLInputElement;
     const spectrogramToggle = trackElement.querySelector('.spectrogram-toggle') as HTMLInputElement;
+    const hasWave = !!(waveformToggle?.checked);
+    const hasSpect = !!(spectrogramToggle?.checked);
+
+    this.trackImageInfo.delete(track.id);
     
     // Clear existing visuals
     visualsContainer.innerHTML = '';
@@ -496,6 +502,11 @@ class MusicPlayerApp {
     container.style.overflowX = 'hidden';
     container.style.overflowY = 'hidden';
 
+    if (!hasWave && !hasSpect) {
+      container.style.height = '0px';
+      return;
+    }
+
     // Create a scrolling track wrapper that will be translated during playback.
     // Use absolute positioning so its large width does not affect layout sizing.
     const trackWrapper = document.createElement('div');
@@ -505,16 +516,9 @@ class MusicPlayerApp {
     trackWrapper.style.top = '0';
     trackWrapper.style.transform = 'translateX(0px)';
     trackWrapper.style.willChange = 'transform';
-    
-    // Prepare decoded buffer once for dynamic rendering
-    let bufferPromise: Promise<AudioBuffer> | null = null;
-    const getBuf = () => {
-      if (!bufferPromise) bufferPromise = this.ensureTrackBuffer(track.id, track.url);
-      return bufferPromise;
-    };
 
     // Add waveform if enabled
-    if (waveformToggle?.checked) {
+    if (hasWave) {
       const waveformImg = document.createElement('img');
       waveformImg.className = 'visual-image waveform-image';
       waveformImg.alt = `Waveform for ${track.label}`;
@@ -522,11 +526,8 @@ class MusicPlayerApp {
       waveformImg.style.display = 'block';
       waveformImg.style.width = '4000px';
       waveformImg.style.height = '50px';
-      // Dynamic render from decoded buffer
-      getBuf().then(buf => {
-        const dataUrl = renderWaveformPng(buf, 4000, 50);
-        waveformImg.src = dataUrl;
-      }).catch(e => console.error('Waveform render failed', e));
+      waveformImg.src = this.deriveVisualUrl(track.url, 'waveform');
+      waveformImg.onerror = () => console.warn(`Waveform image missing for ${track.url}`);
       waveformImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: waveformImg, spectEl: prev?.spectEl || null, wrapperEl: trackWrapper });
@@ -539,20 +540,17 @@ class MusicPlayerApp {
     }
     
     // Add spectrogram if enabled
-    if (spectrogramToggle?.checked) {
+    if (hasSpect) {
       const spectrogramImg = document.createElement('img');
       spectrogramImg.className = 'visual-image spectrogram-image';
       spectrogramImg.alt = `Spectrogram for ${track.label}`;
-      spectrogramImg.style.marginTop = waveformToggle?.checked ? '5px' : '0';
+      spectrogramImg.style.marginTop = hasWave ? '5px' : '0';
       // Fixed display size 4000×200
       spectrogramImg.style.display = 'block';
       spectrogramImg.style.width = '4000px';
       spectrogramImg.style.height = '200px';
-      // Dynamic render from decoded buffer
-      getBuf().then(buf => {
-        const dataUrl = renderSpectrogramPng(buf, 4000, 200);
-        spectrogramImg.src = dataUrl;
-      }).catch(e => console.error('Spectrogram render failed', e));
+      spectrogramImg.src = this.deriveVisualUrl(track.url, 'spectrogram');
+      spectrogramImg.onerror = () => console.warn(`Spectrogram image missing for ${track.url}`);
       spectrogramImg.onload = () => {
         const prev = this.trackImageInfo.get(track.id);
         this.trackImageInfo.set(track.id, { imgEl: prev?.imgEl || null, spectEl: spectrogramImg, wrapperEl: trackWrapper });
@@ -565,12 +563,9 @@ class MusicPlayerApp {
     }
 
     // Compute and set container height based on enabled visuals
-    const hasWave = !!(waveformToggle?.checked);
-    const hasSpect = !!(spectrogramToggle?.checked);
     const marginBetween = hasWave && hasSpect ? 5 : 0;
     const totalHeight = (hasWave ? 50 : 0) + (hasSpect ? 200 : 0) + marginBetween;
-    if (totalHeight > 0) container.style.height = `${totalHeight}px`;
-    else container.style.height = '0px';
+    container.style.height = `${totalHeight}px`;
 
     // Append wrapper to the container (after height is set)
     container.appendChild(trackWrapper);

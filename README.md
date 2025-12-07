@@ -32,7 +32,7 @@
 完整格式與範例請見 PLAN.md；要點如下：
 - `tabs[]`：每個頁籤一組素材。
   - `videos[]`：`{ id, type: 'mp4'|'youtube', url, label }`。
-- `audioGroups[]`：音訊組別；每組含多軌 `tracks[]`，每軌僅需檔案 `url` 與 `label`。波形/頻譜圖檔不需在 config 指定；本專案已全面改以瀏覽器端動態產生視覺化。
+- `audioGroups[]`：音訊組別；每組含多軌 `tracks[]`，每軌僅需檔案 `url` 與 `label`。波形/頻譜圖檔不需在 config 指定；前端會依音檔 URL 讀取同資料夾下的 `<name>.waveform.png`（4000×50）與 `<name>.spectrogram.png`（4000×200，magma 色盤、低頻在下）。
   - `score`：`basePath`（相對於樂曲資料夾）、`entries[]`（按時間切換的樂譜行檔名與時間點）、動畫設定與預載範圍。
   - `defaults`：預設上/下影片、預設音訊組別與左右聲道路由（可指向音軌或正在播放的影片）。
 - 網址參數：
@@ -46,12 +46,9 @@
 - 變體命名：沿用括號樣式，例如 `home_(Piano).mp3`, `home_(Instrumental).mp3`。
 - 檔名字元：偏好 UTF-8；新增資產儘量避免空白（若需，請與現有風格一致）。
 
-### 動態視覺化（不再依賴預存 PNG）
-- 視覺化改為完全在瀏覽器端動態產生：解碼 MP3 之後以 Canvas 產出 data URL 顯示（不落地存檔）。
-- 預設顯示尺寸：
-  - 波形：4000×50 px（黑底、白色波形）
-  - 頻譜：4000×200 px（近似 magma 色盤，實色背景，低頻在下）
-- 仍保留離線產生腳本（選用）：可在需要時批次產生 PNG 檔供外部用途，但前端不再讀取該等 PNG。
+### 波形/頻譜視覺化
+- 波形/頻譜改以離線腳本一次性產生並存放於音檔同資料夾，檔名 `<音檔名>.waveform.png` 與 `<音檔名>.spectrogram.png`（4000×50 / 4000×200，magma 色盤，低頻在下）。
+- 前端僅讀取既有 PNG，不再於瀏覽器內動態繪製；檔案缺失時僅顯示空白。
 
 ## 媒體檢查與轉碼（建議）
 - 快速清單檢視：`find <piece> -type f | sort`
@@ -67,11 +64,12 @@
 - 啟動本機伺服：`npm run serve`
 - PR 提交規範：請勿包含 `js/` 或 `css/` 的手動修改；僅提交 `src/` 的來源變更與文件、媒體檔案等必要內容。
 
-### 產生波形/頻譜 PNG（選用，離線批次）
-- `scripts/gen-mp3-png.sh [-f] [-r DIR]`
-  - 對 `DIR`（預設當前目錄）下所有 `*.mp3` 產生缺少的 `*.waveform.png`（4000×50）與 `*.spectrogram.png`（4000×200）。
-  - `-f` 強制覆蓋已有 PNG。
-  - 需要本機安裝 `ffmpeg`。
+### 產生波形/頻譜 PNG（離線批次）
+- `python3 scripts/gen_visuals.py -r <DIR> [--force]`
+  - 掃描指定目錄（預設當前目錄）下的音檔（mp3/wav/flac/m4a/ogg），為缺少的檔案產生 `<name>.waveform.png` 與 `<name>.spectrogram.png`。
+  - `--force` 會重新產生即使檔案已存在。
+  - 依照前端顯示規格：波形 4000×50 黑底白線、mel 頻譜 4000×200 magma 色盤。
+  - 需求：Python 3、`librosa`、`numpy`、`pillow`。
 
 ## 里程碑（摘自 PLAN.md）
 1. URL 參數解析與頁籤連結（`?tab=`）生成＋重新載入導向
